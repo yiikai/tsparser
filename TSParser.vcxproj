@@ -52,10 +52,13 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>D:\C++ALG\TSParser\TSParser\TSparser\Libcurl\include;D:\C++ALG\TSParser\TSParser\TSparser\SDL\include;D:\C++ALG\TSParser\TSParser\TSparser\ffmpeg-20150729-git-9ec17e4-win32-dev\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalLibraryDirectories>D:\C++ALG\TSParser\TSParser\TSparser\Libcurl\lib;D:\C++ALG\TSParser\TSParser\TSparser\SDL\lib\x86;D:\C++ALG\TSParser\TSParser\TSparser\ffmpeg-20150729-git-9ec17e4-win32-dev\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>avutil.lib;avcodec.lib;avdevice.lib;avfilter.lib;avformat.lib;swresample.lib;swscale.lib;postproc.lib;SDL2.lib;libcurl.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -67,12 +70,15 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>D:\C++ALG\TSParser\TSParser\TSparser\SDL\include;D:\C++ALG\TSParser\TSParser\TSparser\ffmpeg-20150729-git-9ec17e4-win32-dev\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
+      <AdditionalLibraryDirectories>D:\C++ALG\TSParser\TSParser\TSparser\SDL\lib\x86;D:\C++ALG\TSParser\TSParser\TSparser\ffmpeg-20150729-git-9ec17e4-win32-dev\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>avutil.lib;avformat.lib;SDL2.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -82,6 +88,11 @@
     <ClInclude Include="BaseParser.h" />
     <ClInclude Include="Common.h" />
     <ClInclude Include="FileOperator.h" />
+    <ClInclude Include="HlsParser.h" />
+    <ClInclude Include="HttpDownload.h" />
+    <ClInclude Include="IOHandler.h" />
+    <ClInclude Include="M3uParser.h" />
+    <ClInclude Include="Mp4FileParser.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="targetver.h" />
     <ClInclude Include="TsFileParser.h" />
@@ -89,6 +100,11 @@
   <ItemGroup>
     <ClCompile Include="BaseParser.cpp" />
     <ClCompile Include="FileOperator.cpp" />
+    <ClCompile Include="HlsParser.cpp" />
+    <ClCompile Include="HttpDownload.cpp" />
+    <ClCompile Include="IoHanlder.cpp" />
+    <ClCompile Include="M3uParser.cpp" />
+    <ClCompile Include="Mp4FileParser.cpp" />
     <ClCompile Include="stdafx.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="TsFileParser.cpp" />
