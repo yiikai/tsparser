@@ -8,7 +8,7 @@
 class TsFileParser;
 struct packet_st;
 typedef struct  packet_st PAKHEAD_ST;
-typedef int(*type_func)(std::shared_ptr<std::vector<char>>& packet, int offset, TsFileParser* goodfriend, PAKHEAD_ST *head);
+typedef int(*type_func)(std::shared_ptr<std::vector<unsigned char>>& packet, int offset, TsFileParser* goodfriend, PAKHEAD_ST *head);
 
 typedef struct packet_st
 {
@@ -123,7 +123,7 @@ typedef struct _pes_st
 	unsigned char PES_CRC_flag : 1;
 	unsigned char PES_extension_flag : 1;
 	unsigned char PES_header_data_length;
-	std::shared_ptr<std::vector<char>> playloadbuf;
+	std::shared_ptr<std::vector<unsigned char>> playloadbuf;
 	int playloadsize;
 
 	c_int64 pts;
@@ -134,11 +134,11 @@ typedef struct _pes_st
 class section_cb
 {
 public:
-	static int PAT_Handler(std::shared_ptr<std::vector<char>>& packet, int offset, TsFileParser* goodfriend, PAKHEAD_ST *head = NULL);
-	static int PMT_Handler(std::shared_ptr<std::vector<char>>& packet, int offset, TsFileParser* goodfriend, PAKHEAD_ST *head = NULL);
-	static int PES_Handler(std::shared_ptr<std::vector<char>>& packet, int offset, TsFileParser* goodfriend, PAKHEAD_ST *head = NULL);
-	static int ADAPTION_Handler(std::shared_ptr<std::vector<char>>& packet, int offset, TsFileParser* goodfriend, PAKHEAD_ST *head = NULL);
-	static int PES_Packet_Compose(std::shared_ptr<std::vector<char>>& packet, int offset, TsFileParser* goodfriend, PAKHEAD_ST *head = NULL);
+	static int PAT_Handler(std::shared_ptr<std::vector<unsigned char>>& packet, int offset, TsFileParser* goodfriend, PAKHEAD_ST *head = NULL);
+	static int PMT_Handler(std::shared_ptr<std::vector<unsigned char>>& packet, int offset, TsFileParser* goodfriend, PAKHEAD_ST *head = NULL);
+	static int PES_Handler(std::shared_ptr<std::vector<unsigned char>>& packet, int offset, TsFileParser* goodfriend, PAKHEAD_ST *head = NULL);
+	static int ADAPTION_Handler(std::shared_ptr<std::vector<unsigned char>>& packet, int offset, TsFileParser* goodfriend, PAKHEAD_ST *head = NULL);
+	static int PES_Packet_Compose(std::shared_ptr<std::vector<unsigned char>>& packet, int offset, TsFileParser* goodfriend, PAKHEAD_ST *head = NULL);
 };
  
 
@@ -150,21 +150,32 @@ public:
 	int Parse() override;
 	int clearTSAllProgram();
 
+	//only for test api
+	void printvideo();
+	std::shared_ptr<std::vector<unsigned char>> getVideoDatabuf(c_int64 pts);
+	std::shared_ptr<std::vector<unsigned char>> getNextVideoDatabuf(c_int64 setpts);
+	std::shared_ptr<std::vector<unsigned char>> startgetvideobuf();
+	void setVideoItr();
+ 
 private:
-	int GetTsPacket(std::shared_ptr<std::vector<char>>& packet);
-	int checkPacket(const std::shared_ptr<std::vector<char>>& packet, PAKHEAD_ST& head);
+	int GetTsPacket(std::shared_ptr<std::vector<unsigned char>>& packet);
+	int checkPacket(const std::shared_ptr<std::vector<unsigned char>>& packet, PAKHEAD_ST& head);
 	int GetPacketHead();
-	c_int64 getPTS(std::shared_ptr<std::vector<char>>& packet, int offset) override;
-	c_int64 getDTS(std::shared_ptr<std::vector<char>>& packet, int offset) override;
-	c_int64 get_pts_or_dts(std::shared_ptr<std::vector<char>>& packet, int offset);
+	c_int64 getPTS(std::shared_ptr<std::vector<unsigned char>>& packet, int offset) override;
+	c_int64 getDTS(std::shared_ptr<std::vector<unsigned char>>& packet, int offset) override;
+	c_int64 get_pts_or_dts(std::shared_ptr<std::vector<unsigned char>>& packet, int offset);
 	int putPESStreamData(std::shared_ptr<PES_ST> pesdata);
-	int packetPESStreamData(PAKHEAD_ST *head, std::shared_ptr<std::vector<char>>& packet, int offset);
+	int packetPESStreamData(PAKHEAD_ST *head, std::shared_ptr<std::vector<unsigned char>>& packet, int offset);
 	
 private:
 	std::shared_ptr<PAT_ST> m_pat;
 	std::map<int,std::shared_ptr<PMT_ST>> m_pmtMap;  //一个TS文件中会有1个或多个PMT表，代表了有多少个节目在里面
 	std::shared_ptr<PMT_ST> m_currentselectpmt;   //表示当前选择的节目
 	friend class section_cb;
+
+	//only for test
+	std::list<std::shared_ptr<PES_ST>>::iterator m_videouitr;
+	std::list<std::shared_ptr<PES_ST>>::iterator m_videouend;
 };
 
 #endif

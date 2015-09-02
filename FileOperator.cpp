@@ -1,7 +1,41 @@
 #include "FileOperator.h"
 
 
-FileOperator::FileOperator()
+void MemOperator::setInputData(std::shared_ptr<std::vector<unsigned char>> bufdata)
+{
+	m_readdata = bufdata;
+	bufend = bufdata->size();
+}
+
+std::shared_ptr<std::vector<unsigned char>> MemOperator::readBytes(int size)
+{
+	std::shared_ptr<std::vector<unsigned char>> readbytes = std::make_shared<std::vector<unsigned char>>();
+	if (bufstart == bufend)
+	{
+		readbytes = nullptr;
+	}
+	else if (bufstart + size > bufend)
+	{
+		readbytes->assign(m_readdata->begin() + bufstart, m_readdata->end());
+		bufstart = bufend;
+	}
+	else if (bufstart + size >= 0 && bufstart + size <= bufend)
+	{
+		readbytes->assign(m_readdata->begin() + bufstart, m_readdata->begin() + bufstart + size);
+		bufstart += size;
+	}
+	else
+	{
+		readbytes = nullptr;
+		std::cout << "MemOperator: readBytes is at end" << std::endl;
+	}
+	return readbytes;
+}
+
+
+
+
+FileOperator::FileOperator():IoOPerator()
 {
 
 }
@@ -23,26 +57,45 @@ void FileOperator::ReadFile(const std::string filepath)
 	m_filecontext.filehandler = file;
 }
 
-std::shared_ptr<std::vector<char>> FileOperator::readBytesFromFile(int size)
+std::shared_ptr<std::vector<unsigned char>> FileOperator::readBytesFromFile(int size)
 {
-	std::shared_ptr<std::vector<char>> data(new std::vector<char>(size));
+	std::shared_ptr<std::vector<unsigned char>> data(new std::vector<unsigned char>(size));
 	
 	if (m_filecontext.filehandler)
 	{
 		int num = 0;
 		
 		num = fread((*data).data(), 1, size, m_filecontext.filehandler);
-		if (num == size)
+		if (num != 0 )
 		{
 			return data;
+		}
+		else
+		{
+			if (isLocalFileEof())
+			{
+				std::cout << "read local file at end and need over local parser" << std::endl;
+				return nullptr;
+			}
+
 		}
 	}
 	return nullptr;
 }
 
-std::shared_ptr<std::vector<char>> FileOperator::readBytes(int size)
+bool FileOperator::isLocalFileEof()
 {
-	std::shared_ptr<std::vector<char>> tmpdata;
+	if (m_filecontext.filehandler)
+	{
+		if (feof(m_filecontext.filehandler))
+			return true;
+	}
+	return false;
+}
+
+std::shared_ptr<std::vector<unsigned char>> FileOperator::readBytes(int size)
+{
+	std::shared_ptr<std::vector<unsigned char>> tmpdata;
 	tmpdata = readBytesFromFile(size);
 		
 	/*switch (size)
@@ -68,3 +121,4 @@ std::shared_ptr<std::vector<char>> FileOperator::readBytes(int size)
 	}*/
 	return tmpdata;
 }
+

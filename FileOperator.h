@@ -5,15 +5,46 @@
 #include <vector>
 
 
-class FileOperator
+class IoOPerator
+{
+public:
+	IoOPerator(){}
+	virtual ~IoOPerator(){}
+
+	virtual std::shared_ptr<std::vector<unsigned char>> readBytes(int size) = 0;
+};
+
+
+class MemOperator : public IoOPerator
+{
+public:
+	MemOperator():bufstart(0),bufend(0){}
+	~MemOperator(){}
+
+	void setInputData(std::shared_ptr<std::vector<unsigned char>> bufdata);
+	std::shared_ptr<std::vector<unsigned char>> readBytes(int size) override;
+
+private:
+	std::shared_ptr<std::vector<unsigned char>> m_readdata;
+	int bufstart;
+	int bufend;
+};
+
+
+
+class FileOperator : public IoOPerator
 {
 public:
 	FileOperator();
 	~FileOperator();
+	//local file operator
 	void ReadFile(const std::string filepath);
-	std::shared_ptr<std::vector<char>> readBytes(int size);
+	std::shared_ptr<std::vector<unsigned char>> readBytes(int size) override;
+
+	
 private:
-	std::shared_ptr<std::vector<char>> readBytesFromFile(int size);
+	bool isLocalFileEof();
+	std::shared_ptr<std::vector<unsigned char>> readBytesFromFile(int size);
 private:
 	FileContext m_filecontext;
 };

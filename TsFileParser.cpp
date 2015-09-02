@@ -1,7 +1,8 @@
 #include "TsFileParser.h"
-const int PACKETSIZE=188;
+#include <strstream>
+const int PACKETSIZE = 188;
 
-const int PAT=0;
+const int PAT = 0;
 const int PMT = 1;
 const int PES = 2;
 
@@ -34,7 +35,7 @@ int TsFileParser::Parse()
 	int ret;
 	while (1)
 	{
-		std::shared_ptr<std::vector<char>> packet;
+		std::shared_ptr<std::vector<unsigned char>> packet;
 		int offset = 0;
 		ret = GetTsPacket(packet);
 		if (ret == PARSER_FAIL)
@@ -42,13 +43,18 @@ int TsFileParser::Parse()
 			std::cout << "get ts packet error" << std::endl;
 			break;
 		}
-			
+
 		PAKHEAD_ST packethead;
 		memset(&packethead, 0, sizeof(PAKHEAD_ST));
-		checkPacket(packet, packethead);
-		offset += 4; 
-		
-		if (packethead.isPSI)
+		ret = checkPacket(packet, packethead);
+		if (ret == PARSER_FAIL)
+		{
+			std::cout << "check packet error" << std::endl;
+			continue;
+		}
+		offset += 4;
+
+		if (packethead.isPSI && packethead.payload_unit_start_indicator == 1)
 			offset++;   //if The TS packet playload is psi info and need skip one byte of pointer_field
 		if (packethead.adaptation_field_control == 2 || packethead.adaptation_field_control == 3){
 			//have adaption_filed and need to parser
@@ -63,49 +69,60 @@ int TsFileParser::Parse()
 			}
 		}
 		if (packethead.func_cb)
-			packethead.func_cb(packet,offset,this,&packethead);
+			packethead.func_cb(packet, offset, this, &packethead);
 	}
 	return ret;
 }
 
-int TsFileParser::GetTsPacket(std::shared_ptr<std::vector<char>>& packet)
+
+int TsFileParser::GetTsPacket(std::shared_ptr<std::vector<unsigned char>>& packet)
 {
-	packet = m_fileoperator.readBytes(PACKETSIZE);
+	int ret = PARSER_OK;
+	packet = m_fileoperator->readBytes(PACKETSIZE);
 	if (packet == nullptr)
-		return PARSER_FAIL;
-	return PARSER_OK;
+	{
+		ret = PARSER_FAIL;
+	}
+	return ret;
 }
 
 
-c_int64 TsFileParser::getPTS(std::shared_ptr<std::vector<char>>& packet,int offset)
+c_int64 TsFileParser::getPTS(std::shared_ptr<std::vector<unsigned char>>& packet, int offset)
 {
 	return get_pts_or_dts(packet, offset);
 }
 
-c_int64 TsFileParser::get_pts_or_dts(std::shared_ptr<std::vector<char>>& buf, int offset)
+c_int64 TsFileParser::get_pts_or_dts(std::shared_ptr<std::vector<unsigned char>>& buf, int offset)
 {	//before get pts and dts must skip 4bit 0010
-	unsigned char  ptsflag;
-	unsigned char peshdr_datalen;
+
+
+	unsigned char  ptsflag = 0;
+	unsigned char peshdr_datalen = 0;
 	int index = offset;
 
 	c_int64 pts_or_dts;
-	unsigned short pts29_15, pts14_0;
-	c_int64 pts32_30 = ((*buf)[index] & 0x0e) >> 1;
+	unsigned short pts29_15 = 0, pts14_0 = 0;
+	unsigned short pts32_30 = ((*buf)[index] & 0x0e) >> 1;
 	index++;
 	pts29_15 = MKWORD((*buf)[index], (*buf)[index + 1] & 0xfe) >> 1;
 	index += 2;
+	unsigned char tmp1 = (*buf)[index];
+	unsigned char tmp2 = ((*buf)[index + 1] & 0xfe);
+	short tmp3 = tmp1 << 8;
+	short tmp4 = tmp3 | tmp2;
+	short tmp5 = tmp4 >> 1;
 	pts14_0 = MKWORD((*buf)[index], (*buf)[index + 1] & 0xfe) >> 1;
 	pts_or_dts = (pts32_30 << 30) | (pts29_15 << 15) | pts14_0;
 	pts_or_dts = pts_or_dts;
 	return pts_or_dts;
 }
 
-c_int64 TsFileParser::getDTS(std::shared_ptr<std::vector<char>>& packet, int offset)
+c_int64 TsFileParser::getDTS(std::shared_ptr<std::vector<unsigned char>>& packet, int offset)
 {
-	return get_pts_or_dts(packet,offset);
+	return get_pts_or_dts(packet, offset);
 }
 
-int section_cb::PAT_Handler(std::shared_ptr<std::vector<char>>& packet, int offset, TsFileParser* goodfriend, PAKHEAD_ST *head)
+int section_cb::PAT_Handler(std::shared_ptr<std::vector<unsigned char>>& packet, int offset, TsFileParser* goodfriend, PAKHEAD_ST *head)
 {
 	if ((*packet)[offset] != 0x00)
 	{
@@ -120,7 +137,7 @@ int section_cb::PAT_Handler(std::shared_ptr<std::vector<char>>& packet, int offs
 	length[1] = (*packet)[offset] & 0x0f;
 	offset++;
 	length[0] = (*packet)[offset];
-	memcpy(&(pat_st->section_length),length,2);
+	memcpy(&(pat_st->section_length), length, 2);
 	offset++;
 	char ID[2];
 	ID[1] = (*packet)[offset];
@@ -138,9 +155,9 @@ int section_cb::PAT_Handler(std::shared_ptr<std::vector<char>>& packet, int offs
 	pat_st->last_section_number = (*packet)[offset];
 	int programnum = pat_st->section_length - 5 - 4;   //从剩下的pat表数据中获取program info ,最后减掉4个字节是CRC
 	offset++;
-	for (int i = 0; i < programnum;i++)
+	for (int i = 0; i < programnum; i++)
 	{
-		int program_number = 0,program_id = 0;
+		int program_number = 0, program_id = 0;
 		char program[2];
 		program[1] = (*packet)[offset + i];
 		i++;
@@ -151,7 +168,7 @@ int section_cb::PAT_Handler(std::shared_ptr<std::vector<char>>& packet, int offs
 		program[1] = data;
 		i++;
 		program[0] = (*packet)[offset + i];
-		memcpy(&program_id,program,2);
+		memcpy(&program_id, program, 2);
 		pat_st->program_table_list.push_back(std::make_pair(program_number, program_id));
 	}
 	goodfriend->m_pat = pat_st;
@@ -160,8 +177,8 @@ int section_cb::PAT_Handler(std::shared_ptr<std::vector<char>>& packet, int offs
 
 
 
-int section_cb::PES_Handler(std::shared_ptr<std::vector<char>>& packet, int offset, TsFileParser* goodfriend, PAKHEAD_ST *head)
-{
+int section_cb::PES_Handler(std::shared_ptr<std::vector<unsigned char>>& packet, int offset, TsFileParser* goodfriend, PAKHEAD_ST *head)
+{ 
 	if ((*packet)[offset] != 0x00 || (*packet)[++offset] != 0x00 || (*packet)[++offset] != 0x01)
 	{
 		std::cout << "not contain PES packet data" << std::endl;
@@ -225,11 +242,19 @@ int section_cb::PES_Handler(std::shared_ptr<std::vector<char>>& packet, int offs
 		case 2:
 		{
 			pes_st->pts = goodfriend->getPTS(packet, offset);
+			if (pes_st->pts == 927027)
+			{
+				
+			}
 			offset += 5;
 		}break;
 		case 3:
 		{
 			pes_st->pts = goodfriend->getPTS(packet, offset);
+			if (pes_st->pts == 927027)
+			{
+				
+			}
 			offset += 5;
 			pes_st->dts = goodfriend->getDTS(packet, offset);
 			offset += 5;
@@ -254,9 +279,45 @@ int section_cb::PES_Handler(std::shared_ptr<std::vector<char>>& packet, int offs
 
 		}
 	}
-	std::shared_ptr<std::vector<char>> playload(new std::vector<char>((*packet).begin() + playloadstart+1,(*packet).end()));
+	std::shared_ptr<std::vector<unsigned char>> playload(new std::vector<unsigned char>((*packet).begin() + playloadstart + 1, (*packet).end()));
+	//在将新的pes包中的ES数据放入之前， 需要看看这包数据的es数据开头是不是264的0x00000001,不是的话，那么这些数据都是前面的一包pes数据的，需要添加到之前的那一包数据中
+	if (pes_st->streamid == 0xE0)  //目前只考虑video
+	{
+		int n = 0;
+		while (n < (playload->size()-3))
+		{
+			if ((*playload)[n] == 0x00 && (*playload)[n + 1] == 0x00 && (*playload)[n + 2] == 0x00 && (*playload)[n + 3] == 0x01)
+			{
+				break;
+			}
+			n++;
+		}
+		if (n == playload->size() - 3)
+		{
+			if (pes_st->pts == 2176276)
+			{
+				
+			}
+			n = playload->size();
+		}
+		if (n != 0)
+		{
+			std::shared_ptr<std::vector<unsigned char>> dividdata = std::make_shared<std::vector<unsigned char>>(playload->begin(), playload->begin() + n);
+			playload->erase(playload->begin(), playload->begin() + n);
+			section_cb::PES_Packet_Compose(dividdata, 0, goodfriend, head);
+		}
+		else
+		{
+			std::cout << "The pes packet is new , not need divide " << std::endl;
+		}
+		if (playload->empty())
+		{
+			return PARSER_OK;
+		}
+	}
+	//如果这包pes包数据取出了上一帧的分帧数据后,数据为空，则这包数据不要放进去
+	
 	pes_st->playloadbuf = playload;
-
 	goodfriend->putPESStreamData(pes_st);
 	return PARSER_OK;
 }
@@ -274,21 +335,21 @@ int TsFileParser::putPESStreamData(std::shared_ptr<PES_ST> pesdata)
 	return PARSER_OK;
 }
 
-int section_cb::PES_Packet_Compose(std::shared_ptr<std::vector<char>>& packet, int offset, TsFileParser* goodfriend, PAKHEAD_ST *head)
+int section_cb::PES_Packet_Compose(std::shared_ptr<std::vector<unsigned char>>& packet, int offset, TsFileParser* goodfriend, PAKHEAD_ST *head)
 {
 	//进行pes的包拼装，直接获取packet头4个字节之后的数据
 	int ret = goodfriend->packetPESStreamData(head, packet, offset);
 	return ret;
 }
 
-int TsFileParser::packetPESStreamData(PAKHEAD_ST *head, std::shared_ptr<std::vector<char>>& packet, int offset)
+int TsFileParser::packetPESStreamData(PAKHEAD_ST *head, std::shared_ptr<std::vector<unsigned char>>& packet, int offset)
 {
 	std::list<streaminfo_st>::iterator itr = m_currentselectpmt->streamlist.begin();
 	for (; itr != m_currentselectpmt->streamlist.end(); itr++)
 	{
 		if (head->PID == itr->element_pid)
 		{
-			std::shared_ptr<std::vector<char>> packetdata(new std::vector<char>((*packet).begin() + offset,(*packet).end()));
+			std::shared_ptr<std::vector<unsigned char>> packetdata(new std::vector<unsigned char>((*packet).begin() + offset, (*packet).end()));
 			if (itr->streamplayloadlist.empty())
 			{
 				//std::cout << "the pes paceket not include any stream in the Program streamlist" << std::endl;
@@ -301,7 +362,7 @@ int TsFileParser::packetPESStreamData(PAKHEAD_ST *head, std::shared_ptr<std::vec
 	return PARSER_OK;
 }
 
-int section_cb::PMT_Handler(std::shared_ptr<std::vector<char>>& packet, int offset, TsFileParser* goodfriend, PAKHEAD_ST *head)
+int section_cb::PMT_Handler(std::shared_ptr<std::vector<unsigned char>>& packet, int offset, TsFileParser* goodfriend, PAKHEAD_ST *head)
 {
 	if ((*packet)[offset] != 0x02)
 	{
@@ -309,7 +370,7 @@ int section_cb::PMT_Handler(std::shared_ptr<std::vector<char>>& packet, int offs
 		return PARSER_FAIL;
 	}
 	std::shared_ptr<PMT_ST> pmt_st(new PMT_ST());
-	pmt_st->table_id = (*packet)[offset]; 
+	pmt_st->table_id = (*packet)[offset];
 	offset++;
 	pmt_st->section_syntax_length = ((*packet)[offset] & 0x80) >> 7;
 	if (pmt_st->section_syntax_length != 1)
@@ -326,7 +387,7 @@ int section_cb::PMT_Handler(std::shared_ptr<std::vector<char>>& packet, int offs
 	data[1] = (*packet)[offset];
 	offset++;
 	data[0] = (*packet)[offset];
-	memcpy(&(pmt_st->program_number),data,2);
+	memcpy(&(pmt_st->program_number), data, 2);
 	offset++;
 	pmt_st->version_number = ((*packet)[offset] & 0x1f >> 1);
 	pmt_st->current_next_indicator = (*packet)[offset] & 0x01;
@@ -343,7 +404,7 @@ int section_cb::PMT_Handler(std::shared_ptr<std::vector<char>>& packet, int offs
 	data[1] = (*packet)[offset] & 0x0f;
 	offset++;
 	data[0] = (*packet)[offset];
-	memcpy(&(pmt_st->program_info_length),data,2);
+	memcpy(&(pmt_st->program_info_length), data, 2);
 	offset += pmt_st->program_info_length;  //跳过program detailinfo 数据
 	offset++;
 	int totalstreamnum = pmt_st->section_length + 8 - offset - 4;  //8:pmt section_length之前的数据字节数  4：最后的crc校验位值
@@ -372,13 +433,13 @@ int section_cb::PMT_Handler(std::shared_ptr<std::vector<char>>& packet, int offs
 	return PARSER_OK;
 }
 
-int section_cb::ADAPTION_Handler(std::shared_ptr<std::vector<char>>& packet, int offset, TsFileParser* goodfriend, PAKHEAD_ST *head)
+int section_cb::ADAPTION_Handler(std::shared_ptr<std::vector<unsigned char>>& packet, int offset, TsFileParser* goodfriend, PAKHEAD_ST *head)
 {
 	std::shared_ptr<ADAPTION_ST> adapt_st(new ADAPTION_ST());
 	adapt_st->adaptation_field_length = (*packet)[offset];
 	if (adapt_st->adaptation_field_length > 0)
 	{
-		std::vector<char> *remaindata = new std::vector<char>(packet->begin() + offset + adapt_st->adaptation_field_length + 1, packet->end());
+		std::vector<unsigned char> *remaindata = new std::vector<unsigned char>(packet->begin() + offset + adapt_st->adaptation_field_length + 1, packet->end());
 		offset++;
 		adapt_st->discontinuity_indicator = ((*packet)[offset] & 0x80) >> 7;
 		adapt_st->random_access_indicator = ((*packet)[offset] & 0x40) >> 6;
@@ -424,8 +485,14 @@ int TsFileParser::clearTSAllProgram()
 	return PARSER_OK;
 }
 
-int TsFileParser::checkPacket(const std::shared_ptr<std::vector<char>>& packet, PAKHEAD_ST& head)
+int TsFileParser::checkPacket(const std::shared_ptr<std::vector<unsigned char>>& packet, PAKHEAD_ST& head)
 {
+	if (packet->size() != 188)
+	{
+		std::cout << "This pes packet size is not 188 and need put in pes store" << std::endl;  //一种ts文件的数据拼接仓库， 对于流媒体中一个chunk带有下个chunk中pes数据的情况
+		return PARSER_FAIL;
+	}
+
 	if ((*packet)[0] != 0x47)
 	{
 		return PARSER_FAIL;
@@ -436,10 +503,13 @@ int TsFileParser::checkPacket(const std::shared_ptr<std::vector<char>>& packet, 
 	head.payload_unit_start_indicator = data >> 6;
 	data = (*packet)[1] & 0x20;
 	head.transport_priority = data >> 5;
-	if ((((*packet)[1] & 0x1F )== 0x00) && ((*packet)[2] == 0x00))  //TS文件第一个packet是PAT
+	if ((((*packet)[1] & 0x1F) == 0x00) && ((*packet)[2] == 0x00))  //TS文件第一个packet是PAT
 	{
-		std::cout << "The packet playload is PAT table" << std::endl;
-		clearTSAllProgram();
+		//std::cout << "The packet playload is PAT table" << std::endl;
+		if (!m_islocalparser)
+		{
+			clearTSAllProgram();
+		}
 		head.PID = PAT;
 		head.func_cb = section_cb::PAT_Handler;
 		head.isPSI = true;
@@ -451,7 +521,7 @@ int TsFileParser::checkPacket(const std::shared_ptr<std::vector<char>>& packet, 
 		char pmt[2];
 		pmt[1] = (*packet)[1] & 0x1F;
 		pmt[0] = (*packet)[2];
-		memcpy(&id,pmt,2);
+		memcpy(&id, pmt, 2);
 		if (m_pat != NULL && !m_pat->program_table_list.empty())
 		{
 			std::list<std::pair<int, int>>::iterator itr = m_pat->program_table_list.begin();
@@ -459,7 +529,7 @@ int TsFileParser::checkPacket(const std::shared_ptr<std::vector<char>>& packet, 
 			{
 				if (itr->second == id)
 				{
-					std::cout << "The packet playload is PMT table" << std::endl;
+					//std::cout << "The packet playload is PMT table" << std::endl;
 					head.PID = PMT;
 					head.func_cb = section_cb::PMT_Handler;
 					head.isPSI = true;
@@ -470,8 +540,6 @@ int TsFileParser::checkPacket(const std::shared_ptr<std::vector<char>>& packet, 
 		//目前ts文件中只有一个节目，先写死对这一个文件里的流做判断选择
 		if (!m_pmtMap.empty())
 		{
-
-
 			m_currentselectpmt = m_pmtMap.begin()->second;
 			std::list<streaminfo_st>::iterator streamitr = m_pmtMap.begin()->second->streamlist.begin();
 			for (; streamitr != m_pmtMap.begin()->second->streamlist.end(); streamitr++)
@@ -489,6 +557,7 @@ int TsFileParser::checkPacket(const std::shared_ptr<std::vector<char>>& packet, 
 					{
 						head.PID = id;
 						head.func_cb = section_cb::PES_Packet_Compose;
+						
 						head.isPSI = false;
 					}
 					else
@@ -532,5 +601,106 @@ end:
 	}
 	data = (*packet)[3] & 0x0ff;
 	head.continuity_counter = data;
+	if (head.continuity_counter == 3)
+	{
+		
+	}
 	return PARSER_OK;
+}
+
+void TsFileParser::printvideo()
+{
+	FILE* dumpfile = NULL;
+	dumpfile = fopen("dump.log", "w");
+	if (!dumpfile)
+		return;
+	std::list<streaminfo_st>::iterator streamitr;
+	streamitr = m_currentselectpmt->streamlist.begin();
+	for (; streamitr != m_currentselectpmt->streamlist.end(); streamitr++)
+	{
+		if ((*streamitr).stream_type == 0x1B && (*streamitr).element_pid == 0x102)
+		{
+			std::list<std::shared_ptr<PES_ST>>::iterator esitr = (*streamitr).streamplayloadlist.begin();
+			for (; esitr != (*streamitr).streamplayloadlist.end(); esitr++)
+			{
+				char buf[100] = { 0 };
+				sprintf(buf, "Video ES pts is %llu\n video ES size is %d", (*esitr)->dts, (*esitr)->playloadbuf->size());
+				fwrite(buf, 1, strlen(buf) + 1, dumpfile);
+				//std::cout << "Video ES pts is " << (*esitr)->pts << std::endl;
+			}
+		}
+	}
+	fclose(dumpfile);
+}
+
+std::shared_ptr<std::vector<unsigned char>> TsFileParser::getVideoDatabuf(c_int64 setpts)
+{
+	std::list<streaminfo_st>::iterator streamitr;
+	streamitr = m_currentselectpmt->streamlist.begin();
+	for (; streamitr != m_currentselectpmt->streamlist.end(); streamitr++)
+	{
+		if ((*streamitr).stream_type == 0x1B && (*streamitr).element_pid == 0x102)
+		{
+			std::list<std::shared_ptr<PES_ST>>::iterator esitr = (*streamitr).streamplayloadlist.begin();
+			while (esitr != (*streamitr).streamplayloadlist.end())
+			{
+				if ((*esitr)->pts == setpts)
+				{
+					return (*esitr)->playloadbuf;
+				}
+				esitr++;
+			}
+			return nullptr;
+		}
+	}
+}
+
+std::shared_ptr<std::vector<unsigned char>> TsFileParser::getNextVideoDatabuf(c_int64 setpts)
+{
+	std::list<streaminfo_st>::iterator streamitr;
+	streamitr = m_currentselectpmt->streamlist.begin();
+	for (; streamitr != m_currentselectpmt->streamlist.end(); streamitr++)
+	{
+		if ((*streamitr).stream_type == 0x1B && (*streamitr).element_pid == 0x102)
+		{
+			std::list<std::shared_ptr<PES_ST>>::iterator esitr = (*streamitr).streamplayloadlist.begin();
+			while ((*esitr)->pts != setpts && esitr != (*streamitr).streamplayloadlist.end())
+			{
+				esitr++;
+			}
+			return (*(++esitr))->playloadbuf;
+		}
+	}
+}
+
+void TsFileParser::setVideoItr()
+{
+	std::list<streaminfo_st>::iterator streamitr;
+	streamitr = m_currentselectpmt->streamlist.begin();
+	for (; streamitr != m_currentselectpmt->streamlist.end(); streamitr++)
+	{
+		if ((*streamitr).stream_type == 0x1B && (*streamitr).element_pid == 0x102)
+		{
+			std::list<std::shared_ptr<PES_ST>>::iterator esitr = (*streamitr).streamplayloadlist.begin();
+			m_videouitr = (*streamitr).streamplayloadlist.begin();
+			m_videouend = (*streamitr).streamplayloadlist.end();
+			return;
+		}
+	}
+	
+}
+
+std::shared_ptr<std::vector<unsigned char>> TsFileParser::startgetvideobuf()
+{
+	if (m_videouitr != m_videouend)
+	{
+		std::shared_ptr<std::vector<unsigned char>> buf;
+		buf = (*m_videouitr)->playloadbuf;
+		m_videouitr++;
+		return buf;
+	}
+	else
+	{
+		return NULL;
+	}
 }
