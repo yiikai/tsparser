@@ -16,6 +16,10 @@ const int program_stream_directory = 0xFF;
 const int DSMCC_stream = 0xF2;
 const int type_E_stream = 0xF8;
 
+//stream type
+const unsigned char ADTS_AAC = 0x0F;
+const unsigned char H264 = 0x1B;
+
 
 
 
@@ -281,7 +285,7 @@ int section_cb::PES_Handler(std::shared_ptr<std::vector<unsigned char>>& packet,
 	}
 	std::shared_ptr<std::vector<unsigned char>> playload(new std::vector<unsigned char>((*packet).begin() + playloadstart + 1, (*packet).end()));
 	//在将新的pes包中的ES数据放入之前， 需要看看这包数据的es数据开头是不是264的0x00000001,不是的话，那么这些数据都是前面的一包pes数据的，需要添加到之前的那一包数据中
-	if (pes_st->streamid == 0xE0)  //目前只考虑video
+	if (pes_st->streamid == 0xE0)  //video
 	{
 		int n = 0;
 		while (n < (playload->size()-3))
@@ -294,10 +298,6 @@ int section_cb::PES_Handler(std::shared_ptr<std::vector<unsigned char>>& packet,
 		}
 		if (n == playload->size() - 3)
 		{
-			if (pes_st->pts == 2176276)
-			{
-				
-			}
 			n = playload->size();
 		}
 		if (n != 0)
@@ -312,10 +312,42 @@ int section_cb::PES_Handler(std::shared_ptr<std::vector<unsigned char>>& packet,
 		}
 		if (playload->empty())
 		{
+			//如果这包pes包数据取出了上一帧的分帧数据后,数据为空，则这包数据不要放进去
 			return PARSER_OK;
 		}
 	}
-	//如果这包pes包数据取出了上一帧的分帧数据后,数据为空，则这包数据不要放进去
+	else if (pes_st->streamid == 0xC0) //audio
+	{
+		int n = 0;
+		while (n < (playload->size() - 1))
+		{
+			if ((*playload)[n] == 0xFF && ((*playload)[n + 1] & 0xF0 == 0xF0))
+			{
+				break;
+			}
+			n++;
+		}
+		if (n == playload->size() - 1)
+		{
+			n = playload->size();
+		}
+		if (n != 0)
+		{
+			std::shared_ptr<std::vector<unsigned char>> dividdata = std::make_shared<std::vector<unsigned char>>(playload->begin(), playload->begin() + n);
+			playload->erase(playload->begin(), playload->begin() + n);
+			section_cb::PES_Packet_Compose(dividdata, 0, goodfriend, head);
+		}
+		else
+		{
+			std::cout << "The pes packet is new , not need divide " << std::endl;
+		}
+		if (playload->empty())
+		{
+			//如果这包pes包数据取出了上一帧的分帧数据后,数据为空，则这包数据不要放进去
+			return PARSER_OK;
+		}
+	}
+	
 	
 	pes_st->playloadbuf = playload;
 	goodfriend->putPESStreamData(pes_st);
@@ -633,13 +665,44 @@ void TsFileParser::printvideo()
 	fclose(dumpfile);
 }
 
+
+bool TsFileParser::GetVideoStream(std::list<streaminfo_st>::iterator& streamitr)
+{
+	
+	streamitr = m_currentselectpmt->streamlist.begin();
+	for (; streamitr != m_currentselectpmt->streamlist.end(); streamitr++)
+	{
+		if ((*streamitr).stream_type == H264)
+		{
+			return true;
+		}
+	}
+	std::cout << "not found any  video stream" << std::endl;
+	return false;
+}
+
+bool TsFileParser::GetAudioStream(std::list<streaminfo_st>::iterator& streamitr)
+{
+	streamitr = m_currentselectpmt->streamlist.begin();
+	for (; streamitr != m_currentselectpmt->streamlist.end(); streamitr++)
+	{
+		if ((*streamitr).stream_type == ADTS_AAC)
+		{
+			return true;
+		}
+	}
+	std::cout << "not found any  audio stream" << std::endl;
+	return false;
+}
+
+
 std::shared_ptr<std::vector<unsigned char>> TsFileParser::getVideoDatabuf(c_int64 setpts)
 {
 	std::list<streaminfo_st>::iterator streamitr;
 	streamitr = m_currentselectpmt->streamlist.begin();
 	for (; streamitr != m_currentselectpmt->streamlist.end(); streamitr++)
 	{
-		if ((*streamitr).stream_type == 0x1B && (*streamitr).element_pid == 0x102)
+		if ((*streamitr).stream_type == 0x0F && (*streamitr).element_pid == 0x101)
 		{
 			std::list<std::shared_ptr<PES_ST>>::iterator esitr = (*streamitr).streamplayloadlist.begin();
 			while (esitr != (*streamitr).streamplayloadlist.end())
@@ -679,7 +742,7 @@ void TsFileParser::setVideoItr()
 	streamitr = m_currentselectpmt->streamlist.begin();
 	for (; streamitr != m_currentselectpmt->streamlist.end(); streamitr++)
 	{
-		if ((*streamitr).stream_type == 0x1B && (*streamitr).element_pid == 0x102)
+		if ((*streamitr).stream_type == 0x0F && (*streamitr).element_pid == 0x101)
 		{
 			std::list<std::shared_ptr<PES_ST>>::iterator esitr = (*streamitr).streamplayloadlist.begin();
 			m_videouitr = (*streamitr).streamplayloadlist.begin();
