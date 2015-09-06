@@ -150,6 +150,9 @@ public:
 	int Parse() override;
 	int clearTSAllProgram();
 
+	bool GetVideoStream(std::list<streaminfo_st>::iterator& streamitr);
+	bool GetAudioStream(std::list<streaminfo_st>::iterator& streamitr);
+
 	//only for test api
 	void printvideo();
 	std::shared_ptr<std::vector<unsigned char>> getVideoDatabuf(c_int64 pts);
