@@ -1,4 +1,5 @@
 #include "TsFileParser.h"
+#include "ADTSParser.h"
 #include <strstream>
 const int PACKETSIZE = 188;
 
@@ -26,7 +27,9 @@ const unsigned char H264 = 0x1B;
 TsFileParser::TsFileParser() :BaseParser()
 , m_pat(NULL)
 {
-
+	m_audioPacketBuf = std::make_shared<std::list<PACKET>>();
+	m_videoPacketBuf = std::make_shared<std::list<PACKET>>();
+	m_subPacketBuf = std::make_shared<std::list<PACKET>>();
 }
 
 TsFileParser::~TsFileParser()
@@ -75,6 +78,7 @@ int TsFileParser::Parse()
 		if (packethead.func_cb)
 			packethead.func_cb(packet, offset, this, &packethead);
 	}
+	GenerateAVPacket();
 	return ret;
 }
 
@@ -693,6 +697,110 @@ bool TsFileParser::GetAudioStream(std::list<streaminfo_st>::iterator& streamitr)
 	}
 	std::cout << "not found any  audio stream" << std::endl;
 	return false;
+}
+
+void TsFileParser::SplitAudioInEachPes(std::shared_ptr<PES_ST>& pesdata, c_int64 pesduration)
+{
+	int size = pesdata->playloadbuf->size();
+	int packetstartnum = 0;
+	int packetendnum = 0;
+
+	while (!pesdata->playloadbuf->empty())
+	{
+		ADTSParser adtsparse;
+		adtsparse.Parser(pesdata->playloadbuf);
+		int num = adtsparse.GetAACWholeDataSize();
+		//packetendnum += num;
+		PACKET audiopacket;
+		std::shared_ptr<std::vector<unsigned char>> packetdata = std::make_shared<std::vector<unsigned char>>();
+		packetdata->assign(pesdata->playloadbuf->begin(), pesdata->playloadbuf->begin() + num);  //assign 范围到第二个参数之前一个所以要多加一个1
+		audiopacket.data = packetdata;
+		audiopacket.size = packetdata->size();
+		audiopacket.pts = pesdata->pts;
+		//tmpaudiopacketbuf->push_back(audiopacket);
+		m_audioPacketBuf->push_back(audiopacket);
+		pesdata->playloadbuf->erase(pesdata->playloadbuf->begin(), pesdata->playloadbuf->begin() + num);
+			//开始对分解出的一帧AAC数据做封装
+	}
+
+}
+
+void TsFileParser::CalcAudioInEachPesPts(std::shared_ptr<std::list<PACKET>> audiobuf,c_int64 duration)
+{
+	c_int64 eachduration = duration / audiobuf->size();
+}
+
+bool TsFileParser::GetPacket(TType type, PACKET& packet)
+{
+	switch (type)
+	{
+	case TYPE_VIDEO:
+	{
+		if (m_videoPacketBuf->empty())
+		{
+			return false;
+		}
+		packet = m_videoPacketBuf->front();
+		m_videoPacketBuf->pop_front();
+	}break;
+	case TYPE_AUDIO:
+	{
+		if (m_audioPacketBuf->empty())
+		{
+			return false;
+		}
+		packet = m_audioPacketBuf->front();
+		m_audioPacketBuf->pop_front();
+	}break;
+	case TYPE_SUB:
+	{
+
+	}break;
+	default:break;
+	}
+	return true;
+}
+
+int TsFileParser::GenerateAVPacket()
+{
+	//video packet generate
+	std::list<streaminfo_st>::iterator videostream;
+	if (GetVideoStream(videostream))
+	{
+		std::list<std::shared_ptr<PES_ST>>::iterator pesitr = videostream->streamplayloadlist.begin();
+		for (; pesitr != videostream->streamplayloadlist.end(); pesitr++)
+		{
+			PACKET packet;
+			packet.data = (*pesitr)->playloadbuf;
+			packet.size = (*pesitr)->playloadsize;
+			packet.pts = (*pesitr)->pts;
+			m_videoPacketBuf->push_back(packet);
+		}
+	}
+
+	//audio packet generate, need split every packet in pes with ADTS head and calc the pts of each packet
+	std::list<streaminfo_st>::iterator audiostream;
+	if (GetAudioStream(audiostream))
+	{
+		std::list<std::shared_ptr<PES_ST>>::iterator pesitr = audiostream->streamplayloadlist.begin();
+		std::list<std::shared_ptr<PES_ST>>::iterator nextitr = pesitr;
+		nextitr++;   //获取到下一个pes包
+		for (; pesitr != audiostream->streamplayloadlist.end(); pesitr++)
+		{
+			if (nextitr != audiostream->streamplayloadlist.end())
+			{
+				c_int64 pesduration = (*nextitr)->pts - (*pesitr)->pts;
+				SplitAudioInEachPes((*pesitr), pesduration);
+			}
+			else
+			{
+				std::cout << "This is the last pes packet" << std::endl;
+			}
+			
+		}
+	}
+
+	return PARSER_OK;
 }
 
 

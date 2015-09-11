@@ -85,6 +85,7 @@
     <Text Include="ReadMe.txt" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="ADTSParser.h" />
     <ClInclude Include="BaseParser.h" />
     <ClInclude Include="Common.h" />
     <ClInclude Include="FileOperator.h" />
@@ -98,6 +99,7 @@
     <ClInclude Include="TsFileParser.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="ADTSParser.cpp" />
     <ClCompile Include="BaseParser.cpp" />
     <ClCompile Include="FileOperator.cpp" />
     <ClCompile Include="HlsParser.cpp" />

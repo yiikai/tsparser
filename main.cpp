@@ -257,6 +257,7 @@ int _tmain(int argc, _TCHAR* argv[])
 
 
 
+
 	AVFormatContext *pFormatCtx;
 	int             i, audioStream;
 	AVCodecContext  *pCodecCtx;
@@ -414,25 +415,35 @@ int _tmain(int argc, _TCHAR* argv[])
 		if (packet->stream_index == audioStream){
 
 			//解码音频帧的大小从avpkt->size 到avpkt->data 成帧。
-			std::shared_ptr<std::vector<unsigned char>> audiobuf = tsfileparser.startgetvideobuf();
-			/*FILE* myts = NULL;
+			PACKET audiopacket;
+			if (!tsfileparser.GetPacket(TYPE_AUDIO, audiopacket))
+			{
+				std::cout << "packet get end" << std::endl;
+				return 0;
+			}
+			//std::shared_ptr<std::vector<unsigned char>> audiobuf = tsfileparser.startgetvideobuf();
+			FILE* myts = NULL;
 			myts = fopen("mytsaudiodump.txt", "wb");
 			if (!myts)
 			{
-				return 0;
+			return 0;
 			}
-			fwrite(&((*audiobuf)[0]), 1, audiobuf->size(), myts);
-			fclose(myts);*/
+			fwrite(&((*(audiopacket.data))[0]), 1, audiopacket.size, myts);
+			fclose(myts);
 			FILE* fftsaudio = NULL;
 			fftsaudio = fopen("fftsaudiodump.txt", "wb");
 			if (!fftsaudio)
 			{
-				return 0;
+			return 0;
 			}
 			fwrite(packet->data, 1, packet->size, fftsaudio);
 			fclose(fftsaudio);
-			
-			ret = avcodec_decode_audio4(pCodecCtx, pFrame, &got_picture, packet);
+			AVPacket fuckpacket;
+			av_init_packet(&fuckpacket);
+			fuckpacket.data = &((*(audiopacket.data))[0]);
+			fuckpacket.size = audiopacket.size;
+
+			ret = avcodec_decode_audio4(pCodecCtx, pFrame, &got_picture, &fuckpacket);
 			if (ret < 0) {
 				printf("Error in decoding audio frame.\n");
 				return -1;

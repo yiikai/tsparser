@@ -131,6 +131,20 @@ typedef struct _pes_st
 	int streamselectid;   //这个pes包中的流数据是pmt表中的哪个
 }PES_ST;
 
+typedef struct PACKET_ST
+{
+	c_int64 pts;
+	std::shared_ptr<std::vector<unsigned char>> data;
+	c_int64 size;
+}PACKET;
+
+typedef enum TRACKTYPE
+{
+	TYPE_VIDEO = 0,
+	TYPE_AUDIO,
+	TYPE_SUB
+}TType;
+
 class section_cb
 {
 public:
@@ -153,6 +167,8 @@ public:
 	bool GetVideoStream(std::list<streaminfo_st>::iterator& streamitr);
 	bool GetAudioStream(std::list<streaminfo_st>::iterator& streamitr);
 
+	bool GetPacket(TType type,PACKET& packet);
+
 	//only for test api
 	void printvideo();
 	std::shared_ptr<std::vector<unsigned char>> getVideoDatabuf(c_int64 pts);
@@ -169,12 +185,18 @@ private:
 	c_int64 get_pts_or_dts(std::shared_ptr<std::vector<unsigned char>>& packet, int offset);
 	int putPESStreamData(std::shared_ptr<PES_ST> pesdata);
 	int packetPESStreamData(PAKHEAD_ST *head, std::shared_ptr<std::vector<unsigned char>>& packet, int offset);
-	
+	int GenerateAVPacket();
+	void SplitAudioInEachPes(std::shared_ptr<PES_ST>& pesdata, c_int64 pesduration);
+	void CalcAudioInEachPesPts(std::shared_ptr<std::list<PACKET>> audiobuf, c_int64 duration);
 private:
 	std::shared_ptr<PAT_ST> m_pat;
 	std::map<int,std::shared_ptr<PMT_ST>> m_pmtMap;  //一个TS文件中会有1个或多个PMT表，代表了有多少个节目在里面
 	std::shared_ptr<PMT_ST> m_currentselectpmt;   //表示当前选择的节目
 	friend class section_cb;
+
+	std::shared_ptr<std::list<PACKET>> m_videoPacketBuf;
+	std::shared_ptr<std::list<PACKET>> m_audioPacketBuf;
+	std::shared_ptr<std::list<PACKET>> m_subPacketBuf;
 
 	//only for test
 	std::list<std::shared_ptr<PES_ST>>::iterator m_videouitr;
