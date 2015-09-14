@@ -95,6 +95,7 @@
     <ClInclude Include="M3uParser.h" />
     <ClInclude Include="Mp4FileParser.h" />
     <ClInclude Include="stdafx.h" />
+    <ClInclude Include="StreamController.h" />
     <ClInclude Include="targetver.h" />
     <ClInclude Include="TsFileParser.h" />
   </ItemGroup>
@@ -109,6 +110,7 @@
     <ClCompile Include="Mp4FileParser.cpp" />
     <ClCompile Include="stdafx.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="StreamController.cpp" />
     <ClCompile Include="TsFileParser.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

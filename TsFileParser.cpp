@@ -704,7 +704,7 @@ void TsFileParser::SplitAudioInEachPes(std::shared_ptr<PES_ST>& pesdata, c_int64
 	int size = pesdata->playloadbuf->size();
 	int packetstartnum = 0;
 	int packetendnum = 0;
-
+	std::shared_ptr<std::list<PACKET>> tmpaudiopacketbuf = std::make_shared<std::list<PACKET>>();
 	while (!pesdata->playloadbuf->empty())
 	{
 		ADTSParser adtsparse;
@@ -716,18 +716,32 @@ void TsFileParser::SplitAudioInEachPes(std::shared_ptr<PES_ST>& pesdata, c_int64
 		packetdata->assign(pesdata->playloadbuf->begin(), pesdata->playloadbuf->begin() + num);  //assign 范围到第二个参数之前一个所以要多加一个1
 		audiopacket.data = packetdata;
 		audiopacket.size = packetdata->size();
-		audiopacket.pts = pesdata->pts;
-		//tmpaudiopacketbuf->push_back(audiopacket);
-		m_audioPacketBuf->push_back(audiopacket);
+		//audiopacket.pts = pesdata->pts;
+		tmpaudiopacketbuf->push_back(audiopacket);
 		pesdata->playloadbuf->erase(pesdata->playloadbuf->begin(), pesdata->playloadbuf->begin() + num);
-			//开始对分解出的一帧AAC数据做封装
+		//开始对分解出的一帧AAC数据做封装
 	}
-
+	CalcAudioInEachPesPts(tmpaudiopacketbuf, pesduration, pesdata->pts);
+	m_audioPacketBuf->insert(m_audioPacketBuf->end(), tmpaudiopacketbuf->begin(), tmpaudiopacketbuf->end());
 }
 
-void TsFileParser::CalcAudioInEachPesPts(std::shared_ptr<std::list<PACKET>> audiobuf,c_int64 duration)
+void TsFileParser::CalcAudioInEachPesPts(std::shared_ptr<std::list<PACKET>> audiobuf, c_int64 duration, c_int64 startpts)
 {
-	c_int64 eachduration = duration / audiobuf->size();
+	double totalpts = startpts;
+	double eachduration = (double)(duration) / audiobuf->size();
+	std::list<PACKET>::iterator itr = audiobuf->begin();
+	for (; itr != audiobuf->end(); itr++)
+	{
+		if (itr == audiobuf->begin())
+		{
+			itr->pts = startpts;
+		}
+		else
+		{
+			itr->pts = totalpts + eachduration;
+			totalpts += eachduration;
+		}
+	}
 }
 
 bool TsFileParser::GetPacket(TType type, PACKET& packet)
@@ -777,8 +791,10 @@ int TsFileParser::GenerateAVPacket()
 			m_videoPacketBuf->push_back(packet);
 		}
 	}
+	m_totalduration = m_videoPacketBuf->back().pts - m_videoPacketBuf->front().pts;
 
 	//audio packet generate, need split every packet in pes with ADTS head and calc the pts of each packet
+	c_int64 totallistduration = 0;   //用于计算最后的当前pes包的最后一个ts文件的时间长度而定的
 	std::list<streaminfo_st>::iterator audiostream;
 	if (GetAudioStream(audiostream))
 	{
@@ -790,18 +806,24 @@ int TsFileParser::GenerateAVPacket()
 			if (nextitr != audiostream->streamplayloadlist.end())
 			{
 				c_int64 pesduration = (*nextitr)->pts - (*pesitr)->pts;
+				totallistduration += pesduration;
 				SplitAudioInEachPes((*pesitr), pesduration);
+
 			}
 			else
 			{
+
+				SplitAudioInEachPes((*pesitr), m_totalduration - totallistduration);
 				std::cout << "This is the last pes packet" << std::endl;
+				break;
 			}
-			
+			nextitr++;
 		}
 	}
 
 	return PARSER_OK;
 }
+
 
 
 std::shared_ptr<std::vector<unsigned char>> TsFileParser::getVideoDatabuf(c_int64 setpts)

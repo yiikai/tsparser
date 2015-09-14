@@ -133,7 +133,7 @@ typedef struct _pes_st
 
 typedef struct PACKET_ST
 {
-	c_int64 pts;
+	double pts;
 	std::shared_ptr<std::vector<unsigned char>> data;
 	c_int64 size;
 }PACKET;
@@ -187,7 +187,7 @@ private:
 	int packetPESStreamData(PAKHEAD_ST *head, std::shared_ptr<std::vector<unsigned char>>& packet, int offset);
 	int GenerateAVPacket();
 	void SplitAudioInEachPes(std::shared_ptr<PES_ST>& pesdata, c_int64 pesduration);
-	void CalcAudioInEachPesPts(std::shared_ptr<std::list<PACKET>> audiobuf, c_int64 duration);
+	void CalcAudioInEachPesPts(std::shared_ptr<std::list<PACKET>> audiobuf, c_int64 duration, c_int64 startpts);
 private:
 	std::shared_ptr<PAT_ST> m_pat;
 	std::map<int,std::shared_ptr<PMT_ST>> m_pmtMap;  //一个TS文件中会有1个或多个PMT表，代表了有多少个节目在里面
@@ -201,6 +201,8 @@ private:
 	//only for test
 	std::list<std::shared_ptr<PES_ST>>::iterator m_videouitr;
 	std::list<std::shared_ptr<PES_ST>>::iterator m_videouend;
+
+	c_int64 m_totalduration = 0;
 };
 
 #endif

@@ -442,6 +442,7 @@ int _tmain(int argc, _TCHAR* argv[])
 			av_init_packet(&fuckpacket);
 			fuckpacket.data = &((*(audiopacket.data))[0]);
 			fuckpacket.size = audiopacket.size;
+			fuckpacket.pts = audiopacket.pts;
 
 			ret = avcodec_decode_audio4(pCodecCtx, pFrame, &got_picture, &fuckpacket);
 			if (ret < 0) {
