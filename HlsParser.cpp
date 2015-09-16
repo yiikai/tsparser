@@ -64,7 +64,7 @@ bool HlsParser::GenerateSelectTrackChunkList(int videoid, int audioid, int subid
 		std::string videoplaylisturl;
 		videoplaylisturl = m_masterurl.substr(0,m_masterurl.find_last_of('/')) + '/' + vt.url;
 		std::cout << "video playlist url is " << videoplaylisturl << std::endl;
-		dm.startDownload(videoplaylisturl.c_str(), pVideobufdata);
+		dm.startDownload((unsigned char*)videoplaylisturl.c_str(), pVideobufdata);
 		M3uParser playlistparser(pVideobufdata);
 		playlistparser.Parser();
 		std::string playlisturldir = videoplaylisturl.substr(0, videoplaylisturl.find_last_of('/')) + '/';
@@ -84,7 +84,7 @@ bool HlsParser::GenerateSelectTrackChunkList(int videoid, int audioid, int subid
 			std::string audioplaylisturl;
 			audioplaylisturl = m_masterurl.substr(0, m_masterurl.find_last_of('/')) + '/' + at.url;
 			std::cout << "video playlist url is " << audioplaylisturl << std::endl;
-			dm.startDownload(audioplaylisturl.c_str(), pAudiobufdata);
+			dm.startDownload((unsigned char*)audioplaylisturl.c_str(), pAudiobufdata);
 			M3uParser playlistparser(pAudiobufdata);
 			playlistparser.Parser();
 			std::string playlisturldir = audioplaylisturl.substr(0, audioplaylisturl.find_last_of('/')) + '/';
@@ -105,7 +105,7 @@ bool HlsParser::GenerateSelectTrackChunkList(int videoid, int audioid, int subid
 			std::string subplaylisturl;
 			subplaylisturl = m_masterurl.substr(0, m_masterurl.find_last_of('/')) + '/' + at.url;
 			std::cout << "video playlist url is " << subplaylisturl << std::endl;
-			dm.startDownload(subplaylisturl.c_str(), pSubbufdata);
+			dm.startDownload((unsigned char*)subplaylisturl.c_str(), pSubbufdata);
 			M3uParser playlistparser(pSubbufdata);
 			playlistparser.Parser();
 			std::string playlisturldir = subplaylisturl.substr(0, subplaylisturl.find_last_of('/')) + '/';

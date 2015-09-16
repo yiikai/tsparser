@@ -13,7 +13,7 @@ public:
 	~HttpDownloader();
 
 	bool init();
-	bool startDownload(const char* url, std::shared_ptr<std::vector<unsigned char>>& getdownloaddata);
+	bool startDownload(const unsigned char* url, std::shared_ptr<std::vector<unsigned char>>& getdownloaddata);
 	bool setDownloadRange(char* range = NULL);
 private:
 	static long write_callback(char *ptr, size_t size, size_t nmemb, void *userdata);

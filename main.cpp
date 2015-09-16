@@ -282,9 +282,9 @@ int _tmain(int argc, _TCHAR* argv[])
 	const char* url = "http://10.2.68.7:8082/hls/v8/bipbop_16x9_variant.m3u8";
 	HttpDownloader dm;
 	dm.init();
-	dm.startDownload(url, buf);
+	dm.startDownload((const unsigned char*)url, buf);
 	HlsParser hls;
-	hls.Parser(buf, url);
+	hls.Parser(buf, (char*)url);
 	std::shared_ptr<std::vector<STREAMINFO>> streaminfo;
 	playlist video;
 	playlist audio;
@@ -303,7 +303,7 @@ int _tmain(int argc, _TCHAR* argv[])
 	char buf2[100] = { 0 };
 	sprintf(buf2, "%d-%d", itr->byterange_low, itr->byterange_up);
 	dm2.setDownloadRange(buf2);
-	dm2.startDownload(itr->url.c_str(), chunkdata);
+	dm2.startDownload((unsigned char*)itr->url.c_str(), chunkdata);
 	std::cout << "download chunk sucess" << std::endl;
 
 	//}
@@ -407,10 +407,10 @@ int _tmain(int argc, _TCHAR* argv[])
 	au_convert_ctx = swr_alloc_set_opts(au_convert_ctx, out_channel_layout, out_sample_fmt, out_sample_rate,
 		in_channel_layout, pCodecCtx->sample_fmt, pCodecCtx->sample_rate, 0, NULL);
 	swr_init(au_convert_ctx);
-	tsfileparser.setVideoItr();
+	//tsfileparser.setVideoItr();
 	AVPacket *packet = (AVPacket *)malloc(sizeof(AVPacket));
 	av_init_packet(packet);
-	tsfileparser.setVideoItr();
+	//tsfileparser.setVideoItr();
 	while (av_read_frame(pFormatCtx, packet) >= 0){
 		if (packet->stream_index == audioStream){
 

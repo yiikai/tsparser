@@ -68,7 +68,7 @@ bool HttpDownloader::setDownloadRange(char* range)
 	return true;
 }
 
-bool HttpDownloader::startDownload(const char* url, std::shared_ptr<std::vector<unsigned char>>& getdownloaddata)
+bool HttpDownloader::startDownload(const unsigned char* url, std::shared_ptr<std::vector<unsigned char>>& getdownloaddata)
 {
 	char error[1024] = { 0 };
 	CURLcode code;

@@ -168,6 +168,7 @@ public:
 	bool GetAudioStream(std::list<streaminfo_st>::iterator& streamitr);
 
 	bool GetPacket(TType type,PACKET& packet);
+	c_int64 GetTsFileDuration(){ return m_totalduration; }
 
 	//only for test api
 	void printvideo();
