@@ -1,5 +1,26 @@
 #include "StreamController.h"
-#define MAX_BUF_SIZE 20000  //ms
+#define MAX_BUF_SIZE 1800000  //ms   Ts时间的计算方法 s * 1000 * 90     *1000表示毫秒 *90表示timescale
+
+
+std::shared_ptr<StreamContrller> StreamControllerFactory::CreateWantController(STREAMTYPE type)
+{
+	std::shared_ptr<StreamContrller> controller;
+	switch (type)
+	{
+	case HLS:
+	{
+		controller = std::make_shared<HLSStrreamController>();
+	}break;
+	default:
+		break;
+	}
+	return controller;
+}
+
+void HLSStrreamController::init(unsigned char* url)
+{
+	StreamContrller::init(url);
+}
 
 void StreamContrller::InitAVDevice()
 {
@@ -100,10 +121,17 @@ void HLSStrreamController::start()
 	playlist audio;
 	playlist sub;
 	m_hlsParser.getSelectTrackPlaylist(video, audio, sub);
-	m_readvideothread = std::thread(VideoThreadFunc,video,this);
-	m_readaudiothread = std::thread(AudioThreadFunc,audio,this);
-	m_readsubthread = std::thread(SubThreadFunc,sub,this);
-
+	if (!video.chunklist.empty())
+		m_readvideothread = std::thread(VideoThreadFunc,video,this);
+	if (!audio.chunklist.empty())
+		m_readaudiothread = std::thread(AudioThreadFunc,audio,this);
+	if (!sub.chunklist.empty())
+		m_readsubthread = std::thread(SubThreadFunc,sub,this);
+	
+	while (1)
+	{
+		Sleep(1000);
+	}
 	
 }
 

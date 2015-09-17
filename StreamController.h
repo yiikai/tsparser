@@ -20,7 +20,7 @@ public:
 	StreamControllerFactory(){}
 	~StreamControllerFactory(){}
 	
-	std::shared_ptr<StreamContrller> CreateWantController(unsigned char* url, STREAMTYPE type){}
+	std::shared_ptr<StreamContrller> CreateWantController(STREAMTYPE type);
 };
 
 class StreamContrller
@@ -50,7 +50,7 @@ class HLSStrreamController : public StreamContrller
 public:
 	HLSStrreamController();
 	~HLSStrreamController();
-
+	void init(unsigned char* url);
 	void start();
 	void getTrackPlayList(playlist& vplist, playlist& aplist, playlist& splist);
 private:
