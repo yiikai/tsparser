@@ -34,7 +34,6 @@ static int video_dst_bufsize;
 //	std::vector<unsigned char> tmpvec((unsigned char*)data,(unsigned char*)data+sizes);
 //	((std::vector<unsigned char>*)userdata)->insert(((std::vector<unsigned char>*)userdata)->end(), tmpvec.begin(),tmpvec.end());
 //	return sizes;
-//}
 
 
 int _tmain(int argc, _TCHAR* argv[])

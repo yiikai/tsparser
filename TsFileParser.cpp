@@ -775,6 +775,22 @@ bool TsFileParser::GetPacket(TType type, PACKET& packet)
 	return true;
 }
 
+int TsFileParser::calcEacgAVPacketDuration(std::shared_ptr<std::list<PACKET>> packetbuf)
+{
+	std::list<PACKET>::iterator itr = packetbuf->begin();
+	std::list<PACKET>::iterator itrnext = itr;
+	itrnext++;
+	for (; itr != packetbuf->end(); itr++)
+	{
+		if (itrnext != packetbuf->end())
+		{
+			itr->duration = itrnext->pts - itr->pts;
+			itrnext++;
+		}
+	}
+	return PARSER_OK;
+}
+
 int TsFileParser::GenerateAVPacket()
 {
 	//video packet generate
@@ -792,6 +808,7 @@ int TsFileParser::GenerateAVPacket()
 		}
 	}
 	m_totalduration = m_videoPacketBuf->back().pts - m_videoPacketBuf->front().pts;
+	
 
 	//audio packet generate, need split every packet in pes with ADTS head and calc the pts of each packet
 	c_int64 totallistduration = 0;   //用于计算最后的当前pes包的最后一个ts文件的时间长度而定的

@@ -22,6 +22,8 @@ void HLSStrreamController::init(unsigned char* url)
 	StreamContrller::init(url);
 }
 
+
+
 void StreamContrller::InitAVDevice()
 {
 
@@ -54,22 +56,24 @@ void HLSStrreamController::VideoThreadFunc(playlist video,HLSStrreamController *
 
 		controller->m_tsParser.read(std::string(), chunkdata, false);
 		controller->m_tsParser.Parse();
-		controller->m_videobufduration += controller->m_tsParser.GetTsFileDuration();
-		std::unique_lock<std::mutex> lck(controller->m_videomutex);
-		if (controller->m_videobufduration > MAX_BUF_SIZE)
+		c_int64 chunkduration  = controller->m_tsParser.GetTsFileDuration();
+		/*if (chunkduration < controller->m_videobuffer.GetRemainBufferInSecond())
 		{
-			controller->m_cvV.wait(lck);
-		}
-		while (1)
-		{
-			PACKET videopacket;
-			if (!controller->m_tsParser.GetPacket(TYPE_VIDEO, videopacket))
+			while (1)
 			{
-				std::cout << "packet get end" << std::endl;
-				break;
+				PACKET videopacket;
+				if (!controller->m_tsParser.GetPacket(TYPE_VIDEO, videopacket))
+				{
+					std::cout << "packet get end" << std::endl;
+					break;
+				}
+				controller->m_videobuffer.PutIn(videopacket);
 			}
-			controller->m_videopacketbuf.push_back(videopacket);
 		}
+		else
+		{
+			
+		}*/
 	}
 }
 
@@ -113,6 +117,37 @@ void HLSStrreamController::SubThreadFunc(playlist sub, HLSStrreamController *con
 
 }
 
+void HLSStrreamController::GetPacketFunc(TRACKTYPE type, HLSStrreamController *controller)
+{
+	std::list<PACKET> packetbuf;
+	switch (type)
+	{
+	case TYPE_VIDEO:
+	{
+		packetbuf = controller->m_videopacketbuf;
+	}break;
+	case TYPE_AUDIO:
+	{
+		packetbuf = controller->m_audiopacketbuf;
+	}break;
+	default:break;
+	}
+	while (1)
+	{
+		if (!packetbuf.empty())
+		{
+			std::unique_lock<std::mutex> lck(controller->m_videomutex);
+			PACKET packet = packetbuf.front();
+			packetbuf.pop_front();
+		}
+		else
+		{
+			continue;
+		}
+	}
+	
+}
+
 void HLSStrreamController::start()
 {
 	m_hlsParser.Parser(m_manifestdownloaddata, m_mainfesturl);
@@ -122,16 +157,43 @@ void HLSStrreamController::start()
 	playlist sub;
 	m_hlsParser.getSelectTrackPlaylist(video, audio, sub);
 	if (!video.chunklist.empty())
-		m_readvideothread = std::thread(VideoThreadFunc,video,this);
+	{
+		m_hasvideo = true;
+		m_readvideothread = std::thread(VideoThreadFunc, video, this);
+	}
+	else
+	{
+		m_hasvideo = false;
+	}
 	if (!audio.chunklist.empty())
-		m_readaudiothread = std::thread(AudioThreadFunc,audio,this);
+	{
+		m_hasaudio = true;
+		m_readaudiothread = std::thread(AudioThreadFunc, audio, this);
+	}
+	else
+	{
+		m_hasaudio = false;
+	}
 	if (!sub.chunklist.empty())
-		m_readsubthread = std::thread(SubThreadFunc,sub,this);
-	
+	{
+		m_hassub = true;
+		m_readsubthread = std::thread(SubThreadFunc, sub, this);
+	}
+	else
+	{
+		m_hassub = false;
+	}
+
+
+	if (m_hasvideo)
+	{
+		m_getvideothread = std::thread(GetPacketFunc, TYPE_VIDEO, this);
+	}
 	while (1)
 	{
-		Sleep(1000);
+
 	}
+
 	
 }
 

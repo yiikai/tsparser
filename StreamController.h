@@ -1,5 +1,6 @@
 #ifndef STREAM_CONTROLLER_H
 #define STREAM_CONTROLLER_H
+
 #include <memory>
 #include <string>
 #include <thread>
@@ -8,6 +9,7 @@
 #include "HlsParser.h"
 #include "TsFileParser.h"
 #include "HttpDownload.h"
+#include "BufferManager.h"
 enum STREAMTYPE
 {
 	STREAMTYPE_UNKONW = -1,
@@ -57,13 +59,25 @@ private:
 	static void VideoThreadFunc(playlist video, HLSStrreamController *controller);
 	static void AudioThreadFunc(playlist audio, HLSStrreamController *controller);
 	static void SubThreadFunc(playlist sub, HLSStrreamController *controller);
+	static void GetPacketFunc(TRACKTYPE type,HLSStrreamController *controller);
 private:
 	HlsParser m_hlsParser;
 	TsFileParser m_tsParser;
 
+	bool m_hasvideo = false;
+	bool m_hasaudio = false;
+	bool m_hassub = false;
+
+	//BufferManager m_videobuffer;
+	//BufferManager m_audiobuffer;
+
 	std::thread m_readvideothread;
 	std::thread m_readaudiothread;
 	std::thread m_readsubthread;
+
+	std::thread m_getvideothread;
+	std::thread m_getaudiothread;
+	std::thread m_getsubthread;
 
 	std::list<PACKET> m_videopacketbuf;
 	int m_videobufduration = 0;
@@ -79,5 +93,9 @@ private:
 	int m_subbufduration = 0;
 	std::mutex m_submutex;
 	std::condition_variable m_cvS;
+
+	BufferManager m_videobuffer;
+	BufferManager m_audiobuffer;
+	
 };
 #endif

@@ -101,6 +101,7 @@ typedef struct  _adaption_st
 typedef struct _pes_st
 {
 	_pes_st() :pes_packet_length(0)
+		, duration(0)
 		, pts(PTS_NO_VALUE)
 		, dts(DTS_NO_VALUE)
 		, playloadsize(0)
@@ -125,7 +126,7 @@ typedef struct _pes_st
 	unsigned char PES_header_data_length;
 	std::shared_ptr<std::vector<unsigned char>> playloadbuf;
 	int playloadsize;
-
+	c_int64 duration;
 	c_int64 pts;
 	c_int64 dts;
 	int streamselectid;   //这个pes包中的流数据是pmt表中的哪个
@@ -133,9 +134,10 @@ typedef struct _pes_st
 
 typedef struct PACKET_ST
 {
-	double pts;
+	double pts = 0;
 	std::shared_ptr<std::vector<unsigned char>> data;
-	c_int64 size;
+	c_int64 size = 0;
+	c_int64 duration = 0;
 }PACKET;
 
 typedef enum TRACKTYPE
@@ -187,6 +189,7 @@ private:
 	int putPESStreamData(std::shared_ptr<PES_ST> pesdata);
 	int packetPESStreamData(PAKHEAD_ST *head, std::shared_ptr<std::vector<unsigned char>>& packet, int offset);
 	int GenerateAVPacket();
+	int calcEacgAVPacketDuration(std::shared_ptr<std::list<PACKET>> packetbuf);
 	void SplitAudioInEachPes(std::shared_ptr<PES_ST>& pesdata, c_int64 pesduration);
 	void CalcAudioInEachPesPts(std::shared_ptr<std::list<PACKET>> audiobuf, c_int64 duration, c_int64 startpts);
 private:
