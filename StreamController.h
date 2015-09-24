@@ -79,12 +79,12 @@ private:
 	std::thread m_getaudiothread;
 	std::thread m_getsubthread;
 
-	std::list<PACKET> m_videopacketbuf;
+	std::shared_ptr<std::list<PACKET>> m_videopacketbuf;
 	int m_videobufduration = 0;
 	std::mutex m_videomutex;
 	std::condition_variable m_cvV;
 
-	std::list<PACKET> m_audiopacketbuf;
+	std::shared_ptr<std::list<PACKET>> m_audiopacketbuf;
 	int m_audiobufduration = 0;
 	std::mutex m_audiomutex;
 	std::condition_variable m_cvA;

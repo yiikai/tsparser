@@ -37,15 +37,15 @@ bool ADTSParser::Parser(std::shared_ptr<std::vector<unsigned char>> data)
 	bit = (*data)[num] & 0x01;
 	unsigned char bit2;
 	num++;
-	bit2 = ((*data)[num] & 0xE0) >> 5;
-	bit = bit << 3;
+	bit2 = ((*data)[num] & 0xc0) >> 6;
+	bit = bit << 2;
 	m_adtshead.channelconfiguration = bit | bit2;
-	m_adtshead.originality = ((*data)[num] & 0x10) >> 4;
-	m_adtshead.home = ((*data)[num] & 0x08) >> 3;
-	m_adtshead.copyrighted = ((*data)[num] & 0x04) >> 2;
-	m_adtshead.copyrightstart = ((*data)[num] & 0x02) >> 1;
+	m_adtshead.originality = ((*data)[num] & 0x20) >> 5;
+	m_adtshead.home = ((*data)[num] & 0x10) >> 4;
+	m_adtshead.copyrighted = ((*data)[num] & 0x08) >> 3;
+	m_adtshead.copyrightstart = ((*data)[num] & 0x04) >> 2;
 	bit = 0;
-	bit = (*data)[num] & 0x01;
+	bit = (*data)[num] & 0x03;
 	num++;
 	bit2 = 0;
 	bit2 = (*data)[num];
@@ -53,10 +53,12 @@ bool ADTSParser::Parser(std::shared_ptr<std::vector<unsigned char>> data)
 	unsigned char bit3;
 	bit3 = ((*data)[num] & 0xE0) >> 5;
 	int value = 0;
+	int value2 = 0;
+	int value3 = 0;
 	value = (value | bit) << 11;
-	value = (value | bit2) << 3;
-	value = value | bit3;
-	m_adtshead.framelength = value;
+	value2 = (value2 | bit2) << 3;
+	value3 = value3 | bit3;
+	m_adtshead.framelength = (value | value2 | value3);
 
 	value = 0;
 	bit = 0;

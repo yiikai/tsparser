@@ -242,7 +242,7 @@ int section_cb::PES_Handler(std::shared_ptr<std::vector<unsigned char>>& packet,
 		pes_st->PES_extension_flag = ((*packet)[offset] & 0x01);
 		offset++;
 		pes_st->PES_header_data_length = (*packet)[offset];
-		pes_st->playloadsize = pesEnd - offset - pes_st->PES_header_data_length;
+		pes_st->playloadsize = pesEnd - offset - pes_st->PES_header_data_length;   //ts中这个pes的playloadsize的大小不能按188个pes包算，应为video和audio都有可能会大于188个字节导致拼包操作，所以总数要按照最后拼包的playload的大小计算
 		playloadstart = offset + pes_st->PES_header_data_length;
 		offset++;
 		switch (pes_st->PTS_DTS_flags)
@@ -340,6 +340,13 @@ int section_cb::PES_Handler(std::shared_ptr<std::vector<unsigned char>>& packet,
 			std::shared_ptr<std::vector<unsigned char>> dividdata = std::make_shared<std::vector<unsigned char>>(playload->begin(), playload->begin() + n);
 			playload->erase(playload->begin(), playload->begin() + n);
 			section_cb::PES_Packet_Compose(dividdata, 0, goodfriend, head);
+			if (!playload->empty())
+			{
+				if ((*playload)[0] != 0xff && ((*playload)[0] & 0xf0 != 0xf0))
+				{
+					std::cout << "This is a error,please check it" << std::endl;
+				}
+			}
 		}
 		else
 		{
@@ -708,17 +715,34 @@ void TsFileParser::SplitAudioInEachPes(std::shared_ptr<PES_ST>& pesdata, c_int64
 	while (!pesdata->playloadbuf->empty())
 	{
 		ADTSParser adtsparse;
+		if ((*(pesdata->playloadbuf))[0] != 0xff && (((*(pesdata->playloadbuf))[1] & 0xf0) != 0xf0))
+		{
+			std::cout << "fuck" << std::endl;
+		}
 		adtsparse.Parser(pesdata->playloadbuf);
 		int num = adtsparse.GetAACWholeDataSize();
 		//packetendnum += num;
 		PACKET audiopacket;
 		std::shared_ptr<std::vector<unsigned char>> packetdata = std::make_shared<std::vector<unsigned char>>();
+		if (num > pesdata->playloadbuf->size())
+		{
+			num = pesdata->playloadbuf->size();
+		}
 		packetdata->assign(pesdata->playloadbuf->begin(), pesdata->playloadbuf->begin() + num);  //assign 范围到第二个参数之前一个所以要多加一个1
 		audiopacket.data = packetdata;
 		audiopacket.size = packetdata->size();
 		//audiopacket.pts = pesdata->pts;
 		tmpaudiopacketbuf->push_back(audiopacket);
+		std::vector<unsigned char>::iterator tmpite = pesdata->playloadbuf->begin() + num;
+		if (num != pesdata->playloadbuf->size())
+		{
+			if (*tmpite != 0xff && (*(tmpite++) & 0xf0) != 0xf0)
+			{
+				std::cout << "fuck" << std::endl;
+			}
+		}
 		pesdata->playloadbuf->erase(pesdata->playloadbuf->begin(), pesdata->playloadbuf->begin() + num);
+		
 		//开始对分解出的一帧AAC数据做封装
 	}
 	CalcAudioInEachPesPts(tmpaudiopacketbuf, pesduration, pesdata->pts);
@@ -802,7 +826,7 @@ int TsFileParser::GenerateAVPacket()
 		{
 			PACKET packet;
 			packet.data = (*pesitr)->playloadbuf;
-			packet.size = (*pesitr)->playloadsize;
+			packet.size = (*pesitr)->playloadbuf->size();
 			packet.pts = (*pesitr)->pts;
 			m_videoPacketBuf->push_back(packet);
 		}
@@ -816,7 +840,7 @@ int TsFileParser::GenerateAVPacket()
 	if (GetAudioStream(audiostream))
 	{
 		std::list<std::shared_ptr<PES_ST>>::iterator pesitr = audiostream->streamplayloadlist.begin();
-		std::list<std::shared_ptr<PES_ST>>::iterator nextitr = pesitr;
+		std::list<std::shared_ptr<PES_ST>>::iterator nextitr = audiostream->streamplayloadlist.begin();
 		nextitr++;   //获取到下一个pes包
 		for (; pesitr != audiostream->streamplayloadlist.end(); pesitr++)
 		{
@@ -824,12 +848,20 @@ int TsFileParser::GenerateAVPacket()
 			{
 				c_int64 pesduration = (*nextitr)->pts - (*pesitr)->pts;
 				totallistduration += pesduration;
+				if ((*pesitr)->playloadbuf->at(0) != 0xff && ((*pesitr)->playloadbuf->at(1) & 0xf0) != 0xf0)
+				{
+					std::cout << "fuck" << std::endl;
+				}
+					
 				SplitAudioInEachPes((*pesitr), pesduration);
 
 			}
 			else
 			{
-
+				if ((*pesitr)->playloadbuf->at(0) != 0xff && ((*pesitr)->playloadbuf->at(1) & 0xf0) != 0xf0)
+				{
+					std::cout << "fuck" << std::endl;
+				}
 				SplitAudioInEachPes((*pesitr), m_totalduration - totallistduration);
 				std::cout << "This is the last pes packet" << std::endl;
 				break;
