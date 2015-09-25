@@ -16,12 +16,33 @@ void ADTSParser::Init()
 	
 }
 
+bool ADTSParser::ADTSHeadCheck(std::shared_ptr<std::vector<unsigned char>> data)
+{
+	while (data->size() > 7)
+	{
+		if ((*data)[0] == 0xFF && ((*data)[1] & 0xF0) == 0xF0)
+		{
+			return true;
+		}
+		else
+		{
+			data->erase(data->begin(), data->begin() + 1);
+		}
+	}
+	return false;
+}
+
 bool ADTSParser::Parser(std::shared_ptr<std::vector<unsigned char>> data)
 {
-	if (data->size() < 7)
+	if (ADTSHeadCheck(data) == false)
 	{
+		std::cout << "Check adts head error" << std::endl;
 		return false;
 	}
+	/*if (data->size() < 7)
+	{
+		return false;
+	}*/
 	m_adtshead.syncword = 0xfff;
 	int num = 0;
 	num++;

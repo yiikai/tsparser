@@ -35,6 +35,8 @@ public:
 	int GetAdtsHeaderLength(std::shared_ptr<std::vector<unsigned char>> data);
 	int GetAACWholeDataSize(); //include adtsHeader
 private:
+	bool ADTSHeadCheck(std::shared_ptr<std::vector<unsigned char>> data);
+private:
 	ADTSHEADER m_adtshead;
  };
 

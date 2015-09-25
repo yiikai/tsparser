@@ -715,10 +715,6 @@ void TsFileParser::SplitAudioInEachPes(std::shared_ptr<PES_ST>& pesdata, c_int64
 	while (!pesdata->playloadbuf->empty())
 	{
 		ADTSParser adtsparse;
-		if ((*(pesdata->playloadbuf))[0] != 0xff && (((*(pesdata->playloadbuf))[1] & 0xf0) != 0xf0))
-		{
-			std::cout << "fuck" << std::endl;
-		}
 		adtsparse.Parser(pesdata->playloadbuf);
 		int num = adtsparse.GetAACWholeDataSize();
 		//packetendnum += num;
