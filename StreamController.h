@@ -10,6 +10,7 @@
 #include "TsFileParser.h"
 #include "HttpDownload.h"
 #include "BufferManager.h"
+#include "FFmpegDecoder.h"
 enum STREAMTYPE
 {
 	STREAMTYPE_UNKONW = -1,
@@ -96,6 +97,8 @@ private:
 
 	BufferManager m_videobuffer;
 	BufferManager m_audiobuffer;
+
+	FFmpegDecoder m_decoder;
 	
 };
 #endif

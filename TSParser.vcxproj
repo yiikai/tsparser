@@ -89,6 +89,8 @@
     <ClInclude Include="BaseParser.h" />
     <ClInclude Include="BufferManager.h" />
     <ClInclude Include="Common.h" />
+    <ClInclude Include="Decoder.h" />
+    <ClInclude Include="FFmpegDecoder.h" />
     <ClInclude Include="FileOperator.h" />
     <ClInclude Include="HlsParser.h" />
     <ClInclude Include="HttpDownload.h" />
@@ -104,6 +106,8 @@
     <ClCompile Include="ADTSParser.cpp" />
     <ClCompile Include="BaseParser.cpp" />
     <ClCompile Include="BufferManager.cpp" />
+    <ClCompile Include="Decoder.cpp" />
+    <ClCompile Include="FFmpegDecoder.cpp" />
     <ClCompile Include="FileOperator.cpp" />
     <ClCompile Include="HlsParser.cpp" />
     <ClCompile Include="HttpDownload.cpp" />
