@@ -1,7 +1,10 @@
 #include "HlsParser.h"
 #include "HttpDownload.h"
 #include <iostream>
-HlsParser::HlsParser()
+HlsParser::HlsParser():
+m_hasvideo(false)
+, m_hasaudio(false)
+, m_hassub(false)
 {
 	m_pStreamContainer = std::make_shared<std::vector<STREAMINFO>>();
 }
@@ -69,9 +72,11 @@ bool HlsParser::GenerateSelectTrackChunkList(int videoid, int audioid, int subid
 		playlistparser.Parser();
 		std::string playlisturldir = videoplaylisturl.substr(0, videoplaylisturl.find_last_of('/')) + '/';
 		m_videoplaylist = CreateSinglePlaylist(playlistparser.getTagContainer(), playlisturldir);
+		m_hasvideo = true;
 	}
 	else
 	{
+		m_hasvideo = false;
 		std::cout << "not get video playlist url" << std::endl;
 		return false;
 	}
@@ -90,9 +95,15 @@ bool HlsParser::GenerateSelectTrackChunkList(int videoid, int audioid, int subid
 			std::string playlisturldir = audioplaylisturl.substr(0, audioplaylisturl.find_last_of('/')) + '/';
 			m_audioplaylist = CreateSinglePlaylist(playlistparser.getTagContainer(), playlisturldir);
 		}
+		else
+		{
+			std::cout << "This audio track is muexed in video track" << std::endl;
+		}
+		m_hasaudio = true;
 	}
 	else
 	{
+		m_hasaudio = false;
 		std::cout << "not get audio playlist url" << std::endl;
 		return false;
 	}
@@ -111,10 +122,12 @@ bool HlsParser::GenerateSelectTrackChunkList(int videoid, int audioid, int subid
 			std::string playlisturldir = subplaylisturl.substr(0, subplaylisturl.find_last_of('/')) + '/';
 			m_subplaylist = CreateSinglePlaylist(playlistparser.getTagContainer(), playlisturldir);
 		}
+		m_hassub = true;
 	}
 	else
 	{
 		std::cout << "not get sub playlist url" << std::endl;
+		m_hassub = false;
 		return false;
 	}
 	return true;

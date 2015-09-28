@@ -85,32 +85,48 @@ void HLSStrreamController::VideoThreadFunc(playlist video, HLSStrreamController 
 
 void HLSStrreamController::AudioThreadFunc(playlist audio, HLSStrreamController *controller)     //这里有个问题， 现在如果audio和video是在一起的话没办法获取出audio的packet
 {
-	std::list<chunk>::iterator itr = audio.chunklist.begin();
-	while (itr != audio.chunklist.end())
+	if (audio.chunklist.empty() && controller->m_hlsParser.HasAudio())
 	{
-	std::shared_ptr<std::vector<unsigned char>> chunkdata;
-	HttpDownloader dm;
-	dm.init();
-	char buf[100] = { 0 };
-	sprintf(buf, "%d-%d", itr->byterange_low, itr->byterange_up);
-	dm.setDownloadRange(buf);
-	dm.startDownload((unsigned char*)itr->url.c_str(), chunkdata);
-	std::cout << "download chunk sucess" << std::endl;
+		while (1)
+		{
+			PACKET audiopacket;
+			if (!controller->m_tsParser.GetPacket(TYPE_AUDIO, audiopacket))
+			{
+				std::cout << "Audio packet get end" << std::endl;
+				continue;
+			}
+			controller->m_audiobuffer.PutIn(audiopacket);
+		}
+	}
+	else
+	{
+		std::list<chunk>::iterator itr = audio.chunklist.begin();
+		while (itr != audio.chunklist.end())
+		{
+			std::shared_ptr<std::vector<unsigned char>> chunkdata;
+			HttpDownloader dm;
+			dm.init();
+			char buf[100] = { 0 };
+			sprintf(buf, "%d-%d", itr->byterange_low, itr->byterange_up);
+			dm.setDownloadRange(buf);
+			dm.startDownload((unsigned char*)itr->url.c_str(), chunkdata);
+			std::cout << "download chunk sucess" << std::endl;
 
-	controller->m_tsParser.read(std::string(), chunkdata, false);
-	controller->m_tsParser.Parse();
-	controller->m_audiobufduration += controller->m_tsParser.GetTsFileDuration();
-	while (1)
-	{
-	PACKET audiopacket;
-	if (!controller->m_tsParser.GetPacket(TYPE_AUDIO, audiopacket))
-	{
-	std::cout << "Audio packet get end" << std::endl;
-	break;
-	}
-	controller->m_audiobuffer.PutIn(audiopacket);
-	}
-	itr++;
+			controller->m_tsParser.read(std::string(), chunkdata, false);
+			controller->m_tsParser.Parse();
+			controller->m_audiobufduration += controller->m_tsParser.GetTsFileDuration();
+			while (1)
+			{
+				PACKET audiopacket;
+				if (!controller->m_tsParser.GetPacket(TYPE_AUDIO, audiopacket))
+				{
+					std::cout << "Audio packet get end" << std::endl;
+					break;
+				}
+				controller->m_audiobuffer.PutIn(audiopacket);
+			}
+			itr++;
+		}
 	}
 }
 
@@ -118,24 +134,27 @@ void HLSStrreamController::SubThreadFunc(playlist sub, HLSStrreamController *con
 {
 
 }
-#define MAX_AUDIO_FRAME_SIZE 192000
-static  Uint8  *audio_chunk;
-static  Uint32  audio_len;
-static  Uint8  *audio_pos;
-void  fill_audio(void *udata, Uint8 *stream, int len){
-	//SDL 2.0  
-	SDL_memset(stream, 0, len);
-	if (audio_len == 0)        /*  Only  play  if  we  have  data  left  */
-		return;
-	len = (len > audio_len ? audio_len : len);   /*  Mix  as  much  data  as  possible  */
-
-	SDL_MixAudio(stream, audio_pos, len, SDL_MIX_MAXVOLUME);
-	audio_pos += len;
-	audio_len -= len;
-}
+//#define MAX_AUDIO_FRAME_SIZE 192000
+//static  Uint8  *audio_chunk;
+//static  Uint32  audio_len;
+//static  Uint8  *audio_pos;
+//void  fill_audio(void *udata, Uint8 *stream, int len){
+//	//SDL 2.0  
+//	SDL_memset(stream, 0, len);
+//	if (audio_len == 0)        /*  Only  play  if  we  have  data  left  */
+//		return;
+//	len = (len > audio_len ? audio_len : len);   /*  Mix  as  much  data  as  possible  */
+//
+//	SDL_MixAudio(stream, audio_pos, len, SDL_MIX_MAXVOLUME);
+//	audio_pos += len;
+//	audio_len -= len;
+//}
 void HLSStrreamController::GetPacketFunc(TRACKTYPE type, HLSStrreamController *controller)
 {
-	controller->m_decoder.initVideoDecoder(AVCODEC_TYPE::VIDEO_TYPE_H264);
+	if (type == TYPE_VIDEO)
+		controller->m_decoder.initVideoDecoder(AVCODEC_TYPE::VIDEO_TYPE_H264);
+	else if (type == TYPE_AUDIO)
+		controller->m_decoder.initAudioDecoder(AVCODEC_TYPE::AUDIO_TYPE_AAC);
 	while (1)
 	{
 		if (type == TYPE_VIDEO)
@@ -149,7 +168,12 @@ void HLSStrreamController::GetPacketFunc(TRACKTYPE type, HLSStrreamController *c
 		}
 		else if (type == TYPE_AUDIO)
 		{
-
+			PACKET packet;
+			if (controller->m_audiobuffer.PullOut(packet) == false)
+			{
+				continue;
+			}
+			controller->m_decoder.decodeAudio(packet);
 		}
 	}
 //	AVFormatContext *pFormatCtx;
@@ -332,7 +356,7 @@ void HLSStrreamController::start()
 	playlist audio;
 	playlist sub;
 	m_hlsParser.getSelectTrackPlaylist(video, audio, sub);
-	if (!video.chunklist.empty())
+	if (m_hlsParser.HasVideo())
 	{
 		m_hasvideo = true;
 		m_readvideothread = std::thread(VideoThreadFunc, video, this);
@@ -341,7 +365,7 @@ void HLSStrreamController::start()
 	{
 		m_hasvideo = false;
 	}
-	if (!audio.chunklist.empty())
+	if (m_hlsParser.HasAudio())
 	{
 		m_hasaudio = true;
 		m_readaudiothread = std::thread(AudioThreadFunc, audio, this);
@@ -350,7 +374,7 @@ void HLSStrreamController::start()
 	{
 		m_hasaudio = false;
 	}
-	if (!sub.chunklist.empty())
+	if (m_hlsParser.HasSub())
 	{
 		m_hassub = true;
 		m_readsubthread = std::thread(SubThreadFunc, sub, this);
@@ -361,9 +385,13 @@ void HLSStrreamController::start()
 	}
 
 
-	if (m_hasvideo)
+	if (m_hlsParser.HasVideo())
 	{
 		m_getvideothread = std::thread(GetPacketFunc, TYPE_VIDEO, this);
+	}
+	if (m_hlsParser.HasAudio())
+	{
+		m_getaudiothread = std::thread(GetPacketFunc, TYPE_AUDIO, this);
 	}
 	while (1)
 	{

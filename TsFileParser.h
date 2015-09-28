@@ -207,6 +207,7 @@ private:
 	std::list<std::shared_ptr<PES_ST>>::iterator m_videouend;
 
 	c_int64 m_totalduration = 0;
+
 };
 
 #endif

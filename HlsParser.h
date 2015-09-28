@@ -73,6 +73,9 @@ public:
 	void Parser(std::shared_ptr<std::vector<unsigned char>> pDatabuf, std::string url);
 	std::shared_ptr<std::vector<STREAMINFO>> GetSelectStream(){ return m_pStreamContainer; }   //目前都只是写死了选择av第一路，没有sub
 	void getSelectTrackPlaylist(playlist& vplist, playlist& aplist, playlist& splist);
+	bool HasVideo(){ return m_hasvideo; }
+	bool HasAudio(){ return m_hasaudio; }
+	bool HasSub(){ return m_hassub; }
 private:
 	void GenerateStreamInfo(std::shared_ptr<std::vector<TAG>> tag , M3uParser& m3u);
 	playlist CreateSinglePlaylist(std::shared_ptr<std::vector<TAG>> tag, std::string playlisturldir);
@@ -88,6 +91,9 @@ private:
 	playlist m_videoplaylist;
 	playlist m_audioplaylist;
 	playlist m_subplaylist;
+	bool m_hasvideo;
+	bool m_hasaudio;
+	bool m_hassub;
 };
 
 #endif
