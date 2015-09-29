@@ -23,7 +23,7 @@ void HlsParser::Parser(std::shared_ptr<std::vector<unsigned char>> pDatabuf,std:
 	GenerateStreamInfo(m3u.getTagContainer(),m3u);
 	if (type != PLAYLIST)
 	{
-		GenerateSelectTrackChunkList(0, 0, 0);
+		GenerateSelectTrackChunkList(0, 1, 0);
 	}
 	
 }
@@ -55,15 +55,16 @@ void HlsParser::getSelectTrackPlaylist(playlist& vplist, playlist& aplist, playl
 
 bool HlsParser::GenerateSelectTrackChunkList(int videoid, int audioid, int subid)
 {
-	HttpDownloader dm;
-	dm.init();
+	
 	STREAMINFO stream = (*m_pStreamContainer)[videoid];
 	videotrack vt = stream.vt;
 	audiotrack at = {0};
 	subtrack st = {0};
 	if (!vt.url.empty())
 	{
-		std::shared_ptr<std::vector<unsigned char>> pVideobufdata = std::make_shared<std::vector<unsigned char>>();
+		HttpDownloader dm;
+		dm.init();
+		std::shared_ptr<std::vector<unsigned char>> pVideobufdata;
 		std::string videoplaylisturl;
 		videoplaylisturl = m_masterurl.substr(0,m_masterurl.find_last_of('/')) + '/' + vt.url;
 		std::cout << "video playlist url is " << videoplaylisturl << std::endl;
@@ -85,7 +86,9 @@ bool HlsParser::GenerateSelectTrackChunkList(int videoid, int audioid, int subid
 		at = stream.audiotracks[audioid];
 		if (!at.url.empty())
 		{
-			std::shared_ptr<std::vector<unsigned char>> pAudiobufdata = std::make_shared<std::vector<unsigned char>>();
+			HttpDownloader dm;
+			dm.init();
+			std::shared_ptr<std::vector<unsigned char>> pAudiobufdata;
 			std::string audioplaylisturl;
 			audioplaylisturl = m_masterurl.substr(0, m_masterurl.find_last_of('/')) + '/' + at.url;
 			std::cout << "video playlist url is " << audioplaylisturl << std::endl;
@@ -112,7 +115,9 @@ bool HlsParser::GenerateSelectTrackChunkList(int videoid, int audioid, int subid
 		st = stream.subtracks[subid];
 		if (!st.url.empty())
 		{
-			std::shared_ptr<std::vector<unsigned char>> pSubbufdata = std::make_shared<std::vector<unsigned char>>();
+			HttpDownloader dm;
+			dm.init();
+			std::shared_ptr<std::vector<unsigned char>> pSubbufdata;
 			std::string subplaylisturl;
 			subplaylisturl = m_masterurl.substr(0, m_masterurl.find_last_of('/')) + '/' + at.url;
 			std::cout << "video playlist url is " << subplaylisturl << std::endl;
@@ -231,6 +236,9 @@ audiotrack HlsParser::CreateAudioTrack(std::vector<std::pair<ATTRID, std::string
 		}break;
 		case ATTRID::URI:
 		{
+			//去掉url的前后两个引号
+			attritrstart->second.erase(attritrstart->second.begin(), attritrstart->second.begin() + 1);
+			attritrstart->second.erase(attritrstart->second.end()-1, attritrstart->second.end());
 			at.url = attritrstart->second;
 		}break;
 		default:break;

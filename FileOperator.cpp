@@ -33,7 +33,10 @@ std::shared_ptr<std::vector<unsigned char>> MemOperator::readBytes(int size)
 }
 
 
-
+std::shared_ptr<std::vector<unsigned char>> MemOperator::getAllBytes()
+{
+	return m_readdata;
+}
 
 FileOperator::FileOperator():IoOPerator()
 {

@@ -12,6 +12,7 @@ public:
 	virtual ~IoOPerator(){}
 
 	virtual std::shared_ptr<std::vector<unsigned char>> readBytes(int size) = 0;
+	virtual std::shared_ptr<std::vector<unsigned char>> getAllBytes() = 0;
 };
 
 
@@ -23,6 +24,7 @@ public:
 
 	void setInputData(std::shared_ptr<std::vector<unsigned char>> bufdata);
 	std::shared_ptr<std::vector<unsigned char>> readBytes(int size) override;
+	std::shared_ptr<std::vector<unsigned char>> getAllBytes();
 
 private:
 	std::shared_ptr<std::vector<unsigned char>> m_readdata;
@@ -40,7 +42,7 @@ public:
 	//local file operator
 	void ReadFile(const std::string filepath);
 	std::shared_ptr<std::vector<unsigned char>> readBytes(int size) override;
-
+	std::shared_ptr<std::vector<unsigned char>> getAllBytes(){ return NULL; }
 	
 private:
 	bool isLocalFileEof();

@@ -11,6 +11,7 @@
 #include "HttpDownload.h"
 #include "BufferManager.h"
 #include "FFmpegDecoder.h"
+#include "AACParser.h"
 enum STREAMTYPE
 {
 	STREAMTYPE_UNKONW = -1,
@@ -64,6 +65,7 @@ private:
 private:
 	HlsParser m_hlsParser;
 	TsFileParser m_tsParser;
+	AACParser    m_aacparser;
 
 	bool m_hasvideo = false;
 	bool m_hasaudio = false;
@@ -99,6 +101,11 @@ private:
 	BufferManager m_audiobuffer;
 
 	FFmpegDecoder m_decoder;
+
+	std::mutex m_syncvideomutex;
+	double m_syncvideotime = 0;
+	std::mutex m_syncaudiomutex;
+	double m_syncaudiotime = 0;
 	
 };
 #endif

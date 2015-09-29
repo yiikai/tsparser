@@ -66,6 +66,12 @@
     <ClInclude Include="FFmpegDecoder.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="ID3Parser.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="AACParser.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
@@ -111,6 +117,12 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="FFmpegDecoder.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="ID3Parser.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="AACParser.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

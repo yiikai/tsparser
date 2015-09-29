@@ -85,6 +85,7 @@
     <Text Include="ReadMe.txt" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="AACParser.h" />
     <ClInclude Include="ADTSParser.h" />
     <ClInclude Include="BaseParser.h" />
     <ClInclude Include="BufferManager.h" />
@@ -94,6 +95,7 @@
     <ClInclude Include="FileOperator.h" />
     <ClInclude Include="HlsParser.h" />
     <ClInclude Include="HttpDownload.h" />
+    <ClInclude Include="ID3Parser.h" />
     <ClInclude Include="IOHandler.h" />
     <ClInclude Include="M3uParser.h" />
     <ClInclude Include="Mp4FileParser.h" />
@@ -103,6 +105,7 @@
     <ClInclude Include="TsFileParser.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="AACParser.cpp" />
     <ClCompile Include="ADTSParser.cpp" />
     <ClCompile Include="BaseParser.cpp" />
     <ClCompile Include="BufferManager.cpp" />
@@ -111,6 +114,7 @@
     <ClCompile Include="FileOperator.cpp" />
     <ClCompile Include="HlsParser.cpp" />
     <ClCompile Include="HttpDownload.cpp" />
+    <ClCompile Include="ID3Parser.cpp" />
     <ClCompile Include="IoHanlder.cpp" />
     <ClCompile Include="M3uParser.cpp" />
     <ClCompile Include="Mp4FileParser.cpp" />
