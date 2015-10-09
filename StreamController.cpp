@@ -62,7 +62,8 @@ void HLSStrreamController::VideoThreadFunc(playlist video, HLSStrreamController 
 		dm.init();
 		char buf[100] = { 0 };
 		sprintf(buf, "%d-%d", itr->byterange_low, itr->byterange_up);
-		dm.setDownloadRange(buf);
+		if (itr->byterange_up != 0)
+			dm.setDownloadRange(buf);
 		std::cout << "download url is " << itr->url << "range is " << buf << std::endl;
 		dm.startDownload((unsigned char*)itr->url.c_str(), chunkdata);
 		std::cout << "download chunk sucess" << std::endl;
@@ -92,7 +93,7 @@ void HLSStrreamController::AudioThreadFunc(playlist audio, HLSStrreamController 
 			PACKET audiopacket;
 			if (!controller->m_tsParser.GetPacket(TYPE_AUDIO, audiopacket))
 			{
-				std::cout << "Audio packet get end" << std::endl;
+				//std::cout << "Audio packet get end" << std::endl;
 				continue;
 			}
 			controller->m_audiobuffer.PutIn(audiopacket);
@@ -115,12 +116,13 @@ void HLSStrreamController::AudioThreadFunc(playlist audio, HLSStrreamController 
 			//controller->m_tsParser.read(std::string(), chunkdata, false);
 			//controller->m_tsParser.Parse();
 			controller->m_aacparser.read(std::string(), chunkdata, false);
+			controller->m_aacparser.SetChunkDuration(itr->chunkduration);
 			controller->m_aacparser.Parse();
-			controller->m_audiobufduration += controller->m_tsParser.GetTsFileDuration();
+			//controller->m_audiobufduration += controller->m_tsParser.GetTsFileDuration();
 			while (1)
 			{
 				PACKET audiopacket;
-				if (!controller->m_tsParser.GetPacket(TYPE_AUDIO, audiopacket))
+				if (!controller->m_aacparser.GetPacket(TYPE_AUDIO, audiopacket))
 				{
 					std::cout << "Audio packet get end" << std::endl;
 					break;
@@ -152,24 +154,29 @@ void HLSStrreamController::GetPacketFunc(TRACKTYPE type, HLSStrreamController *c
 			{
 				continue;
 			}
-
 			std::unique_lock<std::mutex> lck(controller->m_syncvideomutex);
-			if (controller->m_syncvideotime >= controller->m_syncaudiotime)
+			controller->m_syncvideotime = packet.pts;
+			controller->m_cvV.notify_one();
+			if (controller->m_syncaudiotime == 0)
+			{
+				controller->m_cvV.wait(lck);
+			}
+			if (controller->m_syncvideotime > controller->m_syncaudiotime)
 			{
 				
 				double sleeptime = (controller->m_syncvideotime - controller->m_syncaudiotime) / 1000;
 				lck.unlock();
 				Sleep(sleeptime);
-				controller->m_decoder.decodeVideo(packet);
 				lck.lock();
+				controller->m_decoder.decodeVideo(packet);
 				controller->m_syncvideotime = packet.pts;
 			}
 			else
 			{
 				controller->m_decoder.decodeVideo(packet);
-				controller->m_syncvideotime = packet.pts;
+				
 			}
-
+			
 		}
 		else if (type == TYPE_AUDIO)
 		{
@@ -179,15 +186,20 @@ void HLSStrreamController::GetPacketFunc(TRACKTYPE type, HLSStrreamController *c
 				continue;
 			}
 			std::unique_lock<std::mutex> lck(controller->m_syncvideomutex);
-			if (controller->m_syncaudiotime >= controller->m_syncvideotime)
+			controller->m_syncaudiotime = packet.pts;
+			controller->m_cvV.notify_one();
+			if (controller->m_syncvideotime == 0)
 			{
-				
+				controller->m_cvV.wait(lck);
+			}
+			if (controller->m_syncaudiotime > controller->m_syncvideotime)
+			{
 				double sleeptime = (controller->m_syncaudiotime - controller->m_syncvideotime) / 1000;
 				lck.unlock();
 				Sleep(sleeptime);
-				controller->m_decoder.decodeAudio(packet);
 				lck.lock();
-				controller->m_syncaudiotime = packet.pts;
+				controller->m_decoder.decodeAudio(packet);
+				
 			}
 			else
 			{
@@ -234,6 +246,12 @@ void HLSStrreamController::start()
 		m_hassub = false;
 	}
 
+	//AVS线程开启后，等到buffer区存满之后在进行数据提取
+	while (!(m_videobuffer.CheckBufferIsFull()) || !(m_audiobuffer.CheckBufferIsFull()))
+	{
+		Sleep(1);
+	}
+	//启动packet获取线程之前,先要预先获取AV的头包，为了防止在同步的时候的逻辑错误sleep过长
 
 	if (m_hlsParser.HasVideo())
 	{

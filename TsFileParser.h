@@ -132,20 +132,6 @@ typedef struct _pes_st
 	int streamselectid;   //这个pes包中的流数据是pmt表中的哪个
 }PES_ST;
 
-typedef struct PACKET_ST
-{
-	double pts = 0;
-	std::shared_ptr<std::vector<unsigned char>> data;
-	c_int64 size = 0;
-	c_int64 duration = 0;
-}PACKET;
-
-typedef enum TRACKTYPE
-{
-	TYPE_VIDEO = 0,
-	TYPE_AUDIO,
-	TYPE_SUB
-}TType;
 
 class section_cb
 {
@@ -169,7 +155,7 @@ public:
 	bool GetVideoStream(std::list<streaminfo_st>::iterator& streamitr);
 	bool GetAudioStream(std::list<streaminfo_st>::iterator& streamitr);
 
-	bool GetPacket(TType type,PACKET& packet);
+	//bool GetPacket(TType type,PACKET& packet);
 	c_int64 GetTsFileDuration(){ return m_totalduration; }
 
 	//only for test api
@@ -198,9 +184,9 @@ private:
 	std::shared_ptr<PMT_ST> m_currentselectpmt;   //表示当前选择的节目
 	friend class section_cb;
 
-	std::shared_ptr<std::list<PACKET>> m_videoPacketBuf;
+	/*std::shared_ptr<std::list<PACKET>> m_videoPacketBuf;
 	std::shared_ptr<std::list<PACKET>> m_audioPacketBuf;
-	std::shared_ptr<std::list<PACKET>> m_subPacketBuf;
+	std::shared_ptr<std::list<PACKET>> m_subPacketBuf;*/
 
 	//only for test
 	std::list<std::shared_ptr<PES_ST>>::iterator m_videouitr;

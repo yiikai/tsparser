@@ -25,6 +25,11 @@ void HlsParser::Parser(std::shared_ptr<std::vector<unsigned char>> pDatabuf,std:
 	{
 		GenerateSelectTrackChunkList(0, 1, 0);
 	}
+	//else
+	//{
+	//	//只有playlist
+	//	m_videoplaylist = CreateSinglePlaylist(m3u.getTagContainer(), url);
+	//}
 	
 }
 
@@ -36,7 +41,9 @@ void HlsParser::GenerateStreamInfo(std::shared_ptr<std::vector<TAG>> tag, M3uPar
 	{
 		std::string playlisturl;
 		playlisturl = m_masterurl.substr(0, m_masterurl.find_last_of('/')) + '/';
-		CreateSinglePlaylist(tag, playlisturl);
+		m_videoplaylist = CreateSinglePlaylist(tag, playlisturl);
+		m_hasvideo = true;   //如果主m3u8文件只有一个playlist的话 认为是有video和audio的  注意：其实应该判断一个ts文件里有没有audio或video
+		m_hasaudio = true;
 	}break;
 	case m3utype::MASTER:
 	{
@@ -141,7 +148,7 @@ bool HlsParser::GenerateSelectTrackChunkList(int videoid, int audioid, int subid
 
 playlist HlsParser::CreateSinglePlaylist(std::shared_ptr<std::vector<TAG>> tag,std::string playlisturldir)
 {
-	playlist tmpplaylist;
+	playlist tmpplaylist = { 0, 0, playlisttype::VOD};
 	std::vector<TAG>::iterator playlisttagitr = tag->begin();
 	for (; playlisttagitr != tag->end(); playlisttagitr++)
 	{

@@ -71,9 +71,6 @@ private:
 	bool m_hasaudio = false;
 	bool m_hassub = false;
 
-	//BufferManager m_videobuffer;
-	//BufferManager m_audiobuffer;
-
 	std::thread m_readvideothread;
 	std::thread m_readaudiothread;
 	std::thread m_readsubthread;

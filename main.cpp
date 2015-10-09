@@ -517,12 +517,144 @@ int _tmain(int argc, _TCHAR* argv[])
 
 
 /////controller test
-	const char* url = "http://10.2.68.7:8082/hls/v8/bipbop_16x9_variant.m3u8";
+	//const char* url = "http://10.2.68.7:8082/hls/v8/bipbop_16x9_variant.m3u8";
+	//const char* url = "http://127.0.0.1/yellow.m3u8";
+	const char* url = "http://10.2.72.138/ball.m3u8";
 	StreamControllerFactory factory;
 	std::shared_ptr<StreamContrller> controller = factory.CreateWantController(HLS);
 	controller->init((unsigned char*)url);
 	controller->start();
-	return 0;
 
-	//////////////
+//FFMPEG Video Render 
+//AVFormatContext *format;
+//AVCodecContext *codecctx;
+//AVCodec *codec;
+//AVFrame *pFrame, *pFrameYUV;
+//uint8_t *out_buffer;
+//AVPacket *packet;
+//int y_size;
+//int ret, got_picture;
+//struct SwsContext *img_convert_ctx;
+//
+//
+//av_register_all();
+//const char *url = "D:\\nginx-1.8.0\\nginx-1.8.0\\html\\a167.ts";
+//format = avformat_alloc_context();
+//if (avformat_open_input(&format, url, NULL, NULL) != 0)
+//{
+//	return 0;
+//}
+//if (avformat_find_stream_info(format, NULL) < 0)
+//{
+//	return 0;
+//}
+//int videoindex = -1;
+//for (int i = 0; i < format->nb_streams; i++)
+//{
+//	if (format->streams[i]->codec->codec_type == AVMEDIA_TYPE_VIDEO)
+//	{
+//		videoindex = i;
+//		break;
+//	}
+//}
+//if (videoindex == -1)
+//{
+//	return 0;
+//}
+//codecctx = format->streams[videoindex]->codec;
+//codec = avcodec_find_decoder(codecctx->codec_id);
+//if (codec == NULL)
+//{
+//	return 0;
+//}
+//if (avcodec_open2(codecctx, codec, NULL) < 0)
+//{
+//	return 0;
+//}
+//
+//int screen_w = 0, screen_h = 0;
+//SDL_Window *screen;
+//SDL_Renderer* sdlRenderer;
+//SDL_Texture* sdlTexture;
+//SDL_Rect sdlRect;
+//
+//pFrame = av_frame_alloc();
+//pFrameYUV = av_frame_alloc();
+//out_buffer = (uint8_t *)av_malloc(avpicture_get_size(PIX_FMT_YUV420P, codecctx->width, codecctx->height));
+//avpicture_fill((AVPicture *)pFrameYUV, out_buffer, PIX_FMT_YUV420P, codecctx->width, codecctx->height);
+//packet = (AVPacket *)av_malloc(sizeof(AVPacket));
+////Output Info-----------------------------  
+//printf("--------------- File Information ----------------\n");
+//av_dump_format(format, 0, url, 0);
+//printf("-------------------------------------------------\n");
+//img_convert_ctx = sws_getContext(codecctx->width, codecctx->height, codecctx->pix_fmt,
+//	codecctx->width, codecctx->height, PIX_FMT_YUV420P, SWS_BICUBIC, NULL, NULL, NULL);
+//
+//if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_TIMER)) {
+//	printf("Could not initialize SDL - %s\n", SDL_GetError());
+//	return -1;
+//}
+//
+//screen_w = codecctx->width;
+//screen_h = codecctx->height;
+////SDL 2.0 Support for multiple windows  
+//screen = SDL_CreateWindow("Simplest ffmpeg player's Window", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
+//	screen_w, screen_h,
+//	SDL_WINDOW_OPENGL);
+//
+//if (!screen) {
+//	printf("SDL: could not create window - exiting:%s\n", SDL_GetError());
+//	return -1;
+//}
+//
+//sdlRenderer = SDL_CreateRenderer(screen, -1, 0);
+////IYUV: Y + U + V  (3 planes)  
+////YV12: Y + V + U  (3 planes)  
+//sdlTexture = SDL_CreateTexture(sdlRenderer, SDL_PIXELFORMAT_IYUV, SDL_TEXTUREACCESS_STREAMING, codecctx->width, codecctx->height);
+//
+//sdlRect.x = 0;
+//sdlRect.y = 0;
+//sdlRect.w = screen_w;
+//sdlRect.h = screen_h;
+//while (av_read_frame(format, packet) >= 0){
+//	if (packet->stream_index == videoindex){
+//		ret = avcodec_decode_video2(codecctx, pFrame, &got_picture, packet);
+//		if (ret < 0){
+//			printf("Decode Error.\n");
+//			return -1;
+//		}
+//		if (got_picture){
+//			sws_scale(img_convert_ctx, (const uint8_t* const*)pFrame->data, pFrame->linesize, 0, codecctx->height,
+//				pFrameYUV->data, pFrameYUV->linesize);
+// 
+//			//SDL---------------------------  
+//
+//			SDL_UpdateYUVTexture(sdlTexture, &sdlRect,
+//				pFrameYUV->data[0], pFrameYUV->linesize[0],
+//				pFrameYUV->data[1], pFrameYUV->linesize[1],
+//				pFrameYUV->data[2], pFrameYUV->linesize[2]);
+//  
+//
+//			SDL_RenderClear(sdlRenderer);
+//			SDL_RenderCopy(sdlRenderer, sdlTexture, NULL, &sdlRect);
+//			SDL_RenderPresent(sdlRenderer);
+//			//SDL End-----------------------  
+//			//Delay 40ms  
+//			SDL_Delay(40);
+//		}
+//	}
+//	av_free_packet(packet);
+//}
+//
+//sws_freeContext(img_convert_ctx);
+//
+//SDL_Quit();
+//
+//av_frame_free(&pFrameYUV);
+//av_frame_free(&pFrame);
+//avcodec_close(codecctx);
+//avformat_close_input(&format);
+return 0;
+
+//////////////
 }

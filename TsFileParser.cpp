@@ -27,9 +27,7 @@ const unsigned char H264 = 0x1B;
 TsFileParser::TsFileParser() :BaseParser()
 , m_pat(NULL)
 {
-	m_audioPacketBuf = std::make_shared<std::list<PACKET>>();
-	m_videoPacketBuf = std::make_shared<std::list<PACKET>>();
-	m_subPacketBuf = std::make_shared<std::list<PACKET>>();
+	
 }
 
 TsFileParser::~TsFileParser()
@@ -312,7 +310,7 @@ int section_cb::PES_Handler(std::shared_ptr<std::vector<unsigned char>>& packet,
 		}
 		else
 		{
-			std::cout << "The pes packet is new , not need divide " << std::endl;
+			//std::cout << "The pes packet is new , not need divide " << std::endl;
 		}
 		if (playload->empty())
 		{
@@ -344,13 +342,13 @@ int section_cb::PES_Handler(std::shared_ptr<std::vector<unsigned char>>& packet,
 			{
 				if ((*playload)[0] != 0xff && ((*playload)[0] & 0xf0 != 0xf0))
 				{
-					std::cout << "This is a error,please check it" << std::endl;
+					//std::cout << "This is a error,please check it" << std::endl;
 				}
 			}
 		}
 		else
 		{
-			std::cout << "The pes packet is new , not need divide " << std::endl;
+			//std::cout << "The pes packet is new , not need divide " << std::endl;
 		}
 		if (playload->empty())
 		{
@@ -398,7 +396,7 @@ int TsFileParser::packetPESStreamData(PAKHEAD_ST *head, std::shared_ptr<std::vec
 				//std::cout << "the pes paceket not include any stream in the Program streamlist" << std::endl;
 				return PARSER_FAIL;
 			}
-			(*(--itr->streamplayloadlist.end()))->playloadbuf->insert((*(--itr->streamplayloadlist.end()))->playloadbuf->end(), packetdata->begin(), packetdata->end());
+			(*(--(itr->streamplayloadlist.end())))->playloadbuf->insert((*(--(itr->streamplayloadlist.end())))->playloadbuf->end(), packetdata->begin(), packetdata->end());
 			break;
 		}
 	}
@@ -551,7 +549,7 @@ int TsFileParser::checkPacket(const std::shared_ptr<std::vector<unsigned char>>&
 		//std::cout << "The packet playload is PAT table" << std::endl;
 		if (!m_islocalparser)
 		{
-			clearTSAllProgram();
+			//clearTSAllProgram();
 		}
 		head.PID = PAT;
 		head.func_cb = section_cb::PAT_Handler;
@@ -574,8 +572,17 @@ int TsFileParser::checkPacket(const std::shared_ptr<std::vector<unsigned char>>&
 				{
 					//std::cout << "The packet playload is PMT table" << std::endl;
 					head.PID = PMT;
-					head.func_cb = section_cb::PMT_Handler;
-					head.isPSI = true;
+					//现在如果流媒体播放的时候一个ts钟出现多个PMT表，对第一个之后的PMT表不做处理，以防止将PMT结构更新导致之后的数据加入到playloadbuf不包含264数据头
+					if (m_pmtMap.empty())
+					{
+						head.func_cb = section_cb::PMT_Handler;
+						head.isPSI = true;
+					}
+					else
+					{
+						head.func_cb = NULL;
+						head.isPSI = true;
+					}
 					goto end;
 				}
 			}
@@ -715,7 +722,10 @@ void TsFileParser::SplitAudioInEachPes(std::shared_ptr<PES_ST>& pesdata, c_int64
 	while (!pesdata->playloadbuf->empty())
 	{
 		ADTSParser adtsparse;
-		adtsparse.Parser(pesdata->playloadbuf);
+		if (adtsparse.Parser(pesdata->playloadbuf) == false)
+		{
+			break;
+		}
 		int num = adtsparse.GetAACWholeDataSize();
 		//packetendnum += num;
 		PACKET audiopacket;
@@ -742,6 +752,7 @@ void TsFileParser::SplitAudioInEachPes(std::shared_ptr<PES_ST>& pesdata, c_int64
 		//开始对分解出的一帧AAC数据做封装
 	}
 	CalcAudioInEachPesPts(tmpaudiopacketbuf, pesduration, pesdata->pts);
+	std::unique_lock<std::mutex> lck(m_AudioPacketMutex);
 	m_audioPacketBuf->insert(m_audioPacketBuf->end(), tmpaudiopacketbuf->begin(), tmpaudiopacketbuf->end());
 }
 
@@ -764,36 +775,36 @@ void TsFileParser::CalcAudioInEachPesPts(std::shared_ptr<std::list<PACKET>> audi
 	}
 }
 
-bool TsFileParser::GetPacket(TType type, PACKET& packet)
-{
-	switch (type)
-	{
-	case TYPE_VIDEO:
-	{
-		if (m_videoPacketBuf->empty())
-		{
-			return false;
-		}
-		packet = m_videoPacketBuf->front();
-		m_videoPacketBuf->pop_front();
-	}break;
-	case TYPE_AUDIO:
-	{
-		if (m_audioPacketBuf->empty())
-		{
-			return false;
-		}
-		packet = m_audioPacketBuf->front();
-		m_audioPacketBuf->pop_front();
-	}break;
-	case TYPE_SUB:
-	{
-
-	}break;
-	default:break;
-	}
-	return true;
-}
+//bool TsFileParser::GetPacket(TType type, PACKET& packet)
+//{
+//	switch (type)
+//	{
+//	case TYPE_VIDEO:
+//	{
+//		if (m_videoPacketBuf->empty())
+//		{
+//			return false;
+//		}
+//		packet = m_videoPacketBuf->front();
+//		m_videoPacketBuf->pop_front();
+//	}break;
+//	case TYPE_AUDIO:
+//	{
+//		if (m_audioPacketBuf->empty())
+//		{
+//			return false;
+//		}
+//		packet = m_audioPacketBuf->front();
+//		m_audioPacketBuf->pop_front();
+//	}break;
+//	case TYPE_SUB:
+//	{
+//
+//	}break;
+//	default:break;
+//	}
+//	return true;
+//}
 
 int TsFileParser::calcEacgAVPacketDuration(std::shared_ptr<std::list<PACKET>> packetbuf)
 {
@@ -824,11 +835,13 @@ int TsFileParser::GenerateAVPacket()
 			packet.data = (*pesitr)->playloadbuf;
 			packet.size = (*pesitr)->playloadbuf->size();
 			packet.pts = (*pesitr)->pts;
+			std::unique_lock<std::mutex> lck(m_VideoPacketMutex);
 			m_videoPacketBuf->push_back(packet);
 		}
 	}
 	m_totalduration = m_videoPacketBuf->back().pts - m_videoPacketBuf->front().pts;
-	
+	//为什么要删除 ，原因类似下面的audio
+	videostream->streamplayloadlist.clear();
 
 	//audio packet generate, need split every packet in pes with ADTS head and calc the pts of each packet
 	c_int64 totallistduration = 0;   //用于计算最后的当前pes包的最后一个ts文件的时间长度而定的
@@ -850,6 +863,7 @@ int TsFileParser::GenerateAVPacket()
 				}
 					
 				SplitAudioInEachPes((*pesitr), pesduration);
+				
 
 			}
 			else
@@ -865,7 +879,11 @@ int TsFileParser::GenerateAVPacket()
 			nextitr++;
 		}
 	}
-
+	//每分完audio的pes包就要把这个pes从streamlist里面删除，因为每次都是从audiostream的stramlist里拷贝出数据进行分包处理
+	//处理完后就会使stramlist中的playloadbuf清空，以前由于再解析ts的时候对于出现的pat表会进行一次清空重置的操作，但是现在遇到的ffmpeg切出的
+	//hls的ts文件PAT在很短的间隔中就会出现，这样就导致了不停清空，使得解析完后没有可用的AV数据，所以占时在这里简单的处理下，以后还是要改这个方案的
+	//work around//
+	audiostream->streamplayloadlist.clear();
 	return PARSER_OK;
 }
 
