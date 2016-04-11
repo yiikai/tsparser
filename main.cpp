@@ -517,9 +517,9 @@ int _tmain(int argc, _TCHAR* argv[])
 
 
 /////controller test
-	//const char* url = "http://10.2.68.7:8082/hls/v8/bipbop_16x9_variant.m3u8";
+	const char* url = "http://10.2.68.7:8082/hls/v8/bipbop_16x9_variant.m3u8";
 	//const char* url = "http://127.0.0.1/yellow.m3u8";
-	const char* url = "http://10.2.72.138/ball.m3u8";
+//const char* url = "http://10.2.72.138/ball.m3u8";
 	StreamControllerFactory factory;
 	std::shared_ptr<StreamContrller> controller = factory.CreateWantController(HLS);
 	controller->init((unsigned char*)url);
